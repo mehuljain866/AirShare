@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.printer
+﻿package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.http.HttpRequest
 import com.mehuljain.airshare.ipp.IppAttribute

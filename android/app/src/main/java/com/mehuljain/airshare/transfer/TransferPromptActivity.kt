@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.transfer
+﻿package com.mehuljain.airshare.transfer
 
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -158,7 +158,7 @@ fun AirSharePromptCard(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "${req.senderName} would like to share ${req.jobName}",
+                    text = req.promptSubtitle,
                     color = Color(0xFFA1A1A6),
                     fontSize = 13.sp,
                     maxLines = 2,
@@ -185,10 +185,9 @@ fun AirSharePromptCard(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Image(
-                        painter = painterResource(R.mipmap.ic_launcher),
-                        contentDescription = "Preview",
-                        modifier = Modifier.size(36.dp),
+                    Text(
+                        text = if (req.parsedInfo.isPhoto) "📷" else "📄",
+                        fontSize = 28.sp,
                     )
                 }
             }
@@ -305,8 +304,9 @@ fun AirSharePromptCard(
                     .padding(top = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val dest = if (req.parsedInfo.isPhoto) "Saved to Gallery" else "Saved to Documents"
                 Text(
-                    text = if (comp.success) "✓ ${comp.message}" else "✕ Transfer ${comp.message}",
+                    text = if (comp.success) "✓ ${req.parsedInfo.contentDisplayName}" else "✕ Transfer ${comp.message}",
                     color = if (comp.success) Color(0xFF30D158) else Color(0xFFFF453A),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -314,7 +314,7 @@ fun AirSharePromptCard(
                 )
                 if (comp.success) {
                     Text(
-                        text = "Saved to Gallery",
+                        text = dest,
                         color = Color(0xFFA1A1A6),
                         fontSize = 12.sp,
                     )

@@ -68,6 +68,7 @@
     <string name="ui_section_printer">Device</string>
     <string name="ui_section_network">Port</string>
     <string name="ui_section_mode">Mode &amp; Photo Format</string>
+    <string name="ui_section_timer">Receiver Auto-Off Timer</string>
     <string name="ui_save_photos_as_image_title">Save photos as JPEG</string>
     <string name="ui_save_photos_as_image_desc">Save photos and single-page AirPrint raster jobs directly as JPEG images in Pictures/AirShare with EXIF metadata.</string>
     <string name="ui_extract_pdf_photos_title">Extract photos from PDF</string>

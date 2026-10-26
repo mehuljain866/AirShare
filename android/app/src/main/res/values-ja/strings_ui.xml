@@ -68,6 +68,7 @@
     <string name="ui_section_printer">デバイス</string>
     <string name="ui_section_network">ポート</string>
     <string name="ui_section_mode">モードと写真形式</string>
+    <string name="ui_section_timer">自動停止タイマー</string>
     <string name="ui_save_photos_as_image_title">写真を JPEG で保存</string>
     <string name="ui_save_photos_as_image_desc">受信した写真および単一ページの AirPrint ジョブを JPEG 画像として Pictures/AirShare に EXIF メタデータ付きで保存します。</string>
     <string name="ui_extract_pdf_photos_title">PDF から写真を抽出</string>

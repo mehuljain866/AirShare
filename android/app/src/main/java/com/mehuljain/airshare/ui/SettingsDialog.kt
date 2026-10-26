@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.ui
+﻿package com.mehuljain.airshare.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -50,6 +50,7 @@ fun SettingsDialog(
     var savePhotosAsImages by remember { mutableStateOf(config.savePhotosAsImages) }
     var extractPdfPhotos by remember { mutableStateOf(config.extractPdfPhotos) }
     var autoAccept by remember { mutableStateOf(config.autoAccept) }
+    var autoOffMinutes by remember { mutableStateOf(config.autoOffMinutes) }
 
     val context = LocalContext.current
     val version = remember {
@@ -185,43 +186,33 @@ fun SettingsDialog(
                     Switch(checked = autoAccept, onCheckedChange = { autoAccept = it })
                 }
 
-                val canDrawOverlay = remember {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        Settings.canDrawOverlays(context)
-                    } else true
-                }
-
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(stringResource(R.string.ui_overlay_permission_title), style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            stringResource(R.string.ui_overlay_permission_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (canDrawOverlay) {
-                            Text(
-                                "✓ " + stringResource(R.string.ui_overlay_permission_granted),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 2.dp),
-                            )
-                        }
-                    }
-                    if (!canDrawOverlay && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        TextButton(
-                            onClick = {
-                                val intent = Intent(
-                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:${context.packageName}"),
-                                )
-                                context.startActivity(intent)
-                            },
+                SectionLabel(R.string.ui_section_timer)
+                val timerOptions = listOf(
+                    5 to "5 minutes",
+                    10 to "10 minutes (Default)",
+                    15 to "15 minutes",
+                    30 to "30 minutes",
+                    0 to "Never (keep active)",
+                )
+                Column(Modifier.selectableGroup()) {
+                    timerOptions.forEach { (mins, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().selectable(
+                                selected = (autoOffMinutes == mins),
+                                onClick = { autoOffMinutes = mins },
+                                role = Role.RadioButton,
+                            ).padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(stringResource(R.string.ui_overlay_permission_action))
+                            RadioButton(
+                                selected = (autoOffMinutes == mins),
+                                onClick = null,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
                         }
                     }
                 }
@@ -258,6 +249,7 @@ fun SettingsDialog(
                             savePhotosAsImages = savePhotosAsImages,
                             extractPdfPhotos = extractPdfPhotos,
                             autoAccept = autoAccept,
+                            autoOffMinutes = autoOffMinutes,
                         ),
                     )
                 },

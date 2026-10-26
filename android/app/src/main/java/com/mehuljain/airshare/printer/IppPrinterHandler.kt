@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.printer
+﻿package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.ipp.IppAttribute
 import com.mehuljain.airshare.ipp.IppGroup
@@ -36,8 +36,8 @@ class IppPrinterHandler(
      *                   e.g. "ipp://192.168.1.5:8631/ipp/print" (derived from the HTTP Host header)
      * @return IPP response (never throws for protocol errors; maps them to status codes)
      */
-    fun handle(request: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L): IppMessage = try {
-        dispatch(request, document, printerUri, contentLength)
+    fun handle(request: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L, userAgent: String? = null): IppMessage = try {
+        dispatch(request, document, printerUri, contentLength, userAgent)
     } catch (e: IppError) {
         response(request, e.status, e.message)
     } catch (e: Exception) {
@@ -47,7 +47,7 @@ class IppPrinterHandler(
 
     private class IppError(val status: Int, message: String) : Exception(message)
 
-    private fun dispatch(req: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L): IppMessage {
+    private fun dispatch(req: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L, userAgent: String? = null): IppMessage {
         if (req.versionMajor != 1 && req.versionMajor != 2) {
             throw IppError(IppStatus.SERVER_ERROR_VERSION_NOT_SUPPORTED, "IPP version ${req.versionMajor}.${req.versionMinor} not supported")
         }
@@ -66,7 +66,7 @@ class IppPrinterHandler(
         if (op["printer-uri"]?.stringValue == null && op["job-uri"]?.stringValue == null) {
             throw IppError(IppStatus.CLIENT_ERROR_BAD_REQUEST, "Missing printer-uri")
         }
-        val ctx = Ctx(req, op, printerUri, config(), contentLength)
+        val ctx = Ctx(req, op, printerUri, config(), contentLength, userAgent)
         return when (req.code) {
             IppOperation.GET_PRINTER_ATTRIBUTES -> getPrinterAttributes(ctx)
             IppOperation.VALIDATE_JOB -> { checkCompression(op); declaredFormat(ctx); ok(req) }
@@ -90,6 +90,7 @@ class IppPrinterHandler(
         val printerUri: String,
         val config: PrinterConfig,
         val contentLength: Long = 0L,
+        val userAgent: String? = null,
     ) {
         val userName: String get() = op["requesting-user-name"]?.stringValue?.takeIf { it.isNotBlank() } ?: "anonymous"
         val requested: List<String>? get() = op["requested-attributes"]?.stringValues?.takeIf { it.isNotEmpty() }
@@ -268,6 +269,7 @@ class IppPrinterHandler(
                 jobName = jobName(ctx.op),
                 format = actualFormat ?: OCTET_STREAM,
                 totalBytes = ctx.contentLength,
+                userAgent = ctx.userAgent,
             )
             if (!approved) {
                 drain(stream)
@@ -282,6 +284,7 @@ class IppPrinterHandler(
             jobName = jobName(ctx.op),
             format = actualFormat ?: OCTET_STREAM,
             totalBytes = ctx.contentLength,
+            userAgent = ctx.userAgent,
         )
 
         val progressStream = ProgressInputStream(stream, ctx.contentLength) { read, total ->

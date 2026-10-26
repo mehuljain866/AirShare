@@ -23,6 +23,7 @@ object PrinterPrefs {
             savePhotosAsImages = sp.getBoolean("savePhotosAsImages", true),
             extractPdfPhotos = sp.getBoolean("extractPdfPhotos", true),
             autoAccept = sp.getBoolean("autoAccept", false),
+            autoOffMinutes = sp.getInt("autoOffMinutes", 10),
         )
         if (!sp.contains("uuid") || !sp.contains("name")) save(context, cfg)
         return cfg
@@ -39,6 +40,7 @@ object PrinterPrefs {
             .putBoolean("savePhotosAsImages", config.savePhotosAsImages)
             .putBoolean("extractPdfPhotos", config.extractPdfPhotos)
             .putBoolean("autoAccept", config.autoAccept)
+            .putInt("autoOffMinutes", config.autoOffMinutes)
             .apply()
     }
 

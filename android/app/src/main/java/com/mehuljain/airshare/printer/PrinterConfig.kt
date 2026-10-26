@@ -31,6 +31,11 @@ data class PrinterConfig(
      * When true, incoming transfers are accepted automatically without asking.
      */
     val autoAccept: Boolean = false,
+    /**
+     * Receiver auto-off timer in minutes. Default: 10 minutes.
+     * 0 = Never (stay on until manually turned off).
+     */
+    val autoOffMinutes: Int = 10,
 ) {
     companion object {
         const val DEFAULT_PORT = 8631

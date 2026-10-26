@@ -13,8 +13,12 @@ data class TransferRequest(
     val jobName: String,
     val format: String,
     val totalBytes: Long = 0,
+    val userAgent: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-)
+) {
+    val parsedInfo: DeviceInfoParser.ParsedInfo get() = DeviceInfoParser.parse(userAgent, senderName, jobName, format)
+    val promptSubtitle: String get() = "${parsedInfo.deviceDisplayName} would like to share ${parsedInfo.contentDisplayName}"
+}
 
 sealed class TransferUiState {
     object Idle : TransferUiState()
@@ -60,13 +64,15 @@ object TransferCoordinator {
         jobName: String,
         format: String,
         totalBytes: Long,
+        userAgent: String? = null,
     ): Boolean {
         val req = TransferRequest(
             jobId = jobId,
-            senderName = cleanSenderName(senderName),
-            jobName = cleanJobName(jobName),
+            senderName = senderName,
+            jobName = jobName,
             format = format,
             totalBytes = totalBytes,
+            userAgent = userAgent,
         )
         activeRequest = req
         val deferred = CompletableDeferred<Boolean>()
@@ -96,13 +102,15 @@ object TransferCoordinator {
         jobName: String,
         format: String,
         totalBytes: Long,
+        userAgent: String? = null,
     ) {
         val req = activeRequest ?: TransferRequest(
             jobId = jobId,
-            senderName = cleanSenderName(senderName),
-            jobName = cleanJobName(jobName),
+            senderName = senderName,
+            jobName = jobName,
             format = format,
             totalBytes = totalBytes,
+            userAgent = userAgent,
         )
         activeRequest = req
         val currentThumb = (_uiState.value as? TransferUiState.Prompt)?.thumbnail

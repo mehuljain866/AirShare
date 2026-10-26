@@ -29,10 +29,12 @@ object PrinterController {
     @Volatile private var appContext: Context? = null
     private val lock = Any()
     private val _status = MutableStateFlow(PrinterStatus())
+    private val _remainingSeconds = MutableStateFlow<Int?>(null)
     private var _config: MutableStateFlow<PrinterConfig>? = null
     private var store: JobStore? = null
 
     val status: StateFlow<PrinterStatus> get() = _status.asStateFlow()
+    val remainingSeconds: StateFlow<Int?> get() = _remainingSeconds.asStateFlow()
 
     /** Persisted configuration (SharedPreferences). First access generates a default name + uuid. */
     val config: StateFlow<PrinterConfig> get() = configFlow(null).asStateFlow()
@@ -91,6 +93,10 @@ object PrinterController {
 
     internal fun publishStatus(status: PrinterStatus) {
         _status.value = status
+    }
+
+    internal fun publishRemainingSeconds(secs: Int?) {
+        _remainingSeconds.value = secs
     }
 
     private fun serviceIntent(ctx: Context, action: String) =

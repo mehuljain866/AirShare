@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.service
+﻿package com.mehuljain.airshare.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.IBinder
 import android.text.format.Formatter
@@ -19,7 +20,6 @@ import com.mehuljain.airshare.printer.IppHttpHandler
 import com.mehuljain.airshare.printer.IppPrinterHandler
 import com.mehuljain.airshare.printer.JobState
 import com.mehuljain.airshare.printer.PrintJob
-import com.mehuljain.airshare.transfer.AirShareOverlayManager
 import com.mehuljain.airshare.transfer.TransferCoordinator
 import com.mehuljain.airshare.transfer.TransferPromptActivity
 import com.mehuljain.airshare.transfer.TransferReceiver
@@ -28,13 +28,17 @@ import com.mehuljain.airshare.transfer.TransferUiState
 import com.mehuljain.airshare.ui.MainActivity
 import java.net.Inet4Address
 import java.net.NetworkInterface
+import java.util.Locale
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 class PrinterForegroundService : Service() {
     private val worker = Executors.newSingleThreadExecutor { Thread(it, "airshare-service").apply { isDaemon = true } }
@@ -44,7 +48,7 @@ class PrinterForegroundService : Service() {
     private var port = PrinterController.config.value.port
     private var jobCount = 0
     private var seenStates: Map<Int, JobState>? = null
-    private var overlayManager: AirShareOverlayManager? = null
+    private var timerJob: Job? = null
     @Volatile private var running = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -52,7 +56,6 @@ class PrinterForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        overlayManager = AirShareOverlayManager(this)
         setupTransferCoordinator()
         scope.launchJobObserver()
     }
@@ -82,8 +85,9 @@ class PrinterForegroundService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
-        overlayManager?.dismiss()
-        overlayManager = null
+        timerJob?.cancel()
+        timerJob = null
+        PrinterController.publishRemainingSeconds(null)
         TransferCoordinator.onRequestPrompt = null
         TransferCoordinator.onDismissPrompt = null
         worker.execute { teardown() }
@@ -127,7 +131,7 @@ class PrinterForegroundService : Service() {
             val title = job.name.ifBlank { getString(R.string.job_fallback_name, job.id) }
             val text = formatLabel(job.format) + " \u00b7 " + Formatter.formatShortFileSize(this, job.sizeBytes)
             val n = NotificationCompat.Builder(this, JOBS_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher)
+                .setSmallIcon(R.drawable.ic_stat_airshare)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pi)
@@ -163,10 +167,16 @@ class PrinterForegroundService : Service() {
             server = srv
             advertiser = NsdAdvertiser(this, cfg, srv.boundPort).also { it.register() }
             running = true
+            if (cfg.autoOffMinutes > 0) {
+                startAutoOffTimer(cfg.autoOffMinutes * 60)
+            } else {
+                PrinterController.publishRemainingSeconds(null)
+            }
             PrinterController.publishStatus(
                 PrinterStatus(ServiceState.RUNNING, srv.boundPort, localAddresses(), null)
             )
             notifyUpdate()
+            notifyWidgets()
             Log.i(TAG, "Printer running on port ${srv.boundPort}")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to start", e)
@@ -178,8 +188,32 @@ class PrinterForegroundService : Service() {
         }
     }
 
+    private fun startAutoOffTimer(totalSecs: Int) {
+        timerJob?.cancel()
+        timerJob = scope.launch {
+            var remaining = totalSecs
+            while (remaining > 0 && running) {
+                PrinterController.publishRemainingSeconds(remaining)
+                if (remaining % 10 == 0) notifyUpdate()
+                delay(1000L)
+                remaining--
+            }
+            if (running) {
+                while (TransferCoordinator.uiState.value is TransferUiState.Receiving) {
+                    delay(1000L)
+                }
+                Log.i(TAG, "Auto-off timer expired; stopping service")
+                worker.execute { teardown(); finish() }
+            }
+        }
+    }
+
     private fun teardown() {
         running = false
+        timerJob?.cancel()
+        timerJob = null
+        PrinterController.publishRemainingSeconds(null)
+        notifyWidgets()
         try { advertiser?.unregister() } catch (e: Throwable) { Log.w(TAG, "nsd stop", e) }
         advertiser = null
         try { server?.stop() } catch (e: Throwable) { Log.w(TAG, "server stop", e) }
@@ -219,10 +253,18 @@ class PrinterForegroundService : Service() {
             Intent(this, PrinterForegroundService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val remaining = PrinterController.remainingSeconds.value
+        val text = if (remaining != null && remaining > 0) {
+            val m = remaining / 60
+            val s = remaining % 60
+            String.format(Locale.getDefault(), "Ready · Auto-off in %02d:%02d", m, s)
+        } else {
+            getString(R.string.notification_jobs, jobCount)
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_airshare)
             .setContentTitle(getString(R.string.notification_title, port))
-            .setContentText(getString(R.string.notification_jobs, jobCount))
+            .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -251,14 +293,10 @@ class PrinterForegroundService : Service() {
 
     private fun setupTransferCoordinator() {
         TransferCoordinator.onRequestPrompt = { req ->
-            if (overlayManager?.canDraw() == true) {
-                overlayManager?.show(req)
-            }
             showTransferPromptNotification(req)
         }
 
         TransferCoordinator.onDismissPrompt = {
-            overlayManager?.dismiss()
             dismissTransferPromptNotification()
         }
 
@@ -266,12 +304,11 @@ class PrinterForegroundService : Service() {
             .onEach { state ->
                 when (state) {
                     is TransferUiState.Receiving -> {
-                        overlayManager?.updateProgress(state.bytesRead, state.totalBytes, state.progress)
                         updateTransferProgressNotification(state.request, state.bytesRead, state.totalBytes, state.progress)
                     }
                     is TransferUiState.Completed -> {
-                        overlayManager?.showCompleted(state.success, state.message)
                         dismissTransferPromptNotification()
+                        showTransferCompletedNotification(state)
                     }
                     else -> {}
                 }
@@ -296,10 +333,13 @@ class PrinterForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val largeIcon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+
         val n = NotificationCompat.Builder(this, INCOMING_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_airshare)
+            .setLargeIcon(largeIcon)
             .setContentTitle("AirShare")
-            .setContentText("${req.senderName} would like to share ${req.jobName}")
+            .setContentText(req.promptSubtitle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setFullScreenIntent(fullScreenPi, true)
@@ -321,8 +361,11 @@ class PrinterForegroundService : Service() {
             "Receiving ${Formatter.formatShortFileSize(this, bytesRead)}"
         }
 
+        val largeIcon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+
         val n = NotificationCompat.Builder(this, INCOMING_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_airshare)
+            .setLargeIcon(largeIcon)
             .setContentTitle("AirShare")
             .setContentText(text)
             .setProgress(max, curr, totalBytes <= 0)
@@ -332,6 +375,45 @@ class PrinterForegroundService : Service() {
             .build()
 
         getSystemService(NotificationManager::class.java).notify(PROMPT_NOTIFICATION_ID, n)
+    }
+
+    private fun showTransferCompletedNotification(state: TransferUiState.Completed) {
+        val req = state.request
+        val parsed = req.parsedInfo
+        val dest = if (parsed.isPhoto) "Saved to Gallery" else "Saved to Documents"
+        val title = if (state.success) "Transfer complete" else "Transfer declined"
+        val text = if (state.success) "${parsed.contentDisplayName} · $dest" else state.message
+
+        val contentIntent = PendingIntent.getActivity(
+            this, req.jobId,
+            Intent().setComponent(ComponentName(this, MainActivity::class.java))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        val builder = NotificationCompat.Builder(this, JOBS_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_airshare)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        if (state.thumbnail != null) {
+            builder.setLargeIcon(state.thumbnail)
+            builder.setStyle(NotificationCompat.BigPictureStyle().bigPicture(state.thumbnail).showBigPictureWhenCollapsed(false))
+        } else {
+            builder.setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+        }
+
+        getSystemService(NotificationManager::class.java).notify(JOB_NOTIFICATION_BASE + req.jobId, builder.build())
+    }
+
+    private fun notifyWidgets() {
+        try {
+            com.mehuljain.airshare.widget.AirShareWidgetProvider.updateAll(this)
+            com.mehuljain.airshare.widget.AirShareTileService.updateTileState(this)
+        } catch (_: Throwable) {}
     }
 
     private fun dismissTransferPromptNotification() {
