@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.service
+﻿package com.mehuljain.airshare.service
 
 import android.content.Context
 import android.os.Build
@@ -22,6 +22,7 @@ object PrinterPrefs {
             compatibilityMode = sp.getBoolean("compatibilityMode", true),
             savePhotosAsImages = sp.getBoolean("savePhotosAsImages", true),
             extractPdfPhotos = sp.getBoolean("extractPdfPhotos", true),
+            autoAccept = sp.getBoolean("autoAccept", false),
         )
         if (!sp.contains("uuid") || !sp.contains("name")) save(context, cfg)
         return cfg
@@ -37,6 +38,7 @@ object PrinterPrefs {
             .putBoolean("compatibilityMode", config.compatibilityMode)
             .putBoolean("savePhotosAsImages", config.savePhotosAsImages)
             .putBoolean("extractPdfPhotos", config.extractPdfPhotos)
+            .putBoolean("autoAccept", config.autoAccept)
             .apply()
     }
 

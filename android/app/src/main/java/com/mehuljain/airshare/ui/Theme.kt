@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.ui
+﻿package com.mehuljain.airshare.ui
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

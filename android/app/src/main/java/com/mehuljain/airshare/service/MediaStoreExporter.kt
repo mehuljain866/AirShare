@@ -28,6 +28,15 @@ class MediaStoreExporter(context: Context) : DocumentExporter {
             ?: insert(collection, withSuffix(displayName), format, isImage)
         if (uri == null) throw IOException("MediaStore insert failed for $displayName")
         try {
+            if (isImage) {
+                try {
+                    val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 4 }
+                    val bmp = android.graphics.BitmapFactory.decodeFile(source.absolutePath, opts)
+                    if (bmp != null) {
+                        com.mehuljain.airshare.transfer.TransferCoordinator.setThumbnail(0, bmp)
+                    }
+                } catch (_: Exception) {}
+            }
             val out = resolver.openOutputStream(uri) ?: throw IOException("Cannot open $uri")
             out.use { o -> source.inputStream().use { it.copyTo(o) } }
             val done = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }

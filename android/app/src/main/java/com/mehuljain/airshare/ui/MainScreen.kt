@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.ui
+package com.mehuljain.airshare.ui
 
 import android.Manifest
 import android.content.ActivityNotFoundException
@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,6 +50,9 @@ import com.mehuljain.airshare.printer.PrintJob
 import com.mehuljain.airshare.printer.PrinterConfig
 import com.mehuljain.airshare.service.PrinterStatus
 import com.mehuljain.airshare.service.ServiceState
+import com.mehuljain.airshare.transfer.AirSharePromptCard
+import com.mehuljain.airshare.transfer.TransferCoordinator
+import com.mehuljain.airshare.transfer.TransferUiState
 import kotlinx.coroutines.launch
 
 private const val FILE_PROVIDER_AUTHORITY = "com.mehuljain.airshare.fileprovider"
@@ -61,6 +65,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val status by viewModel.status.collectAsStateWithLifecycle()
     val config by viewModel.config.collectAsStateWithLifecycle()
     val jobs by viewModel.jobs.collectAsStateWithLifecycle()
+    val transferState by TransferCoordinator.uiState.collectAsStateWithLifecycle()
 
     val snackbar = remember { SnackbarHostState() }
     var showSettings by remember { mutableStateOf(false) }
@@ -163,6 +168,15 @@ fun MainScreen(viewModel: MainViewModel) {
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
+            if (transferState !is TransferUiState.Idle) {
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    AirSharePromptCard(
+                        state = transferState,
+                        onAccept = { TransferCoordinator.accept() },
+                        onDecline = { TransferCoordinator.decline() },
+                    )
+                }
+            }
             StatusCard(
                 status = status,
                 config = config,

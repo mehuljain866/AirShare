@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.ipp.IppAttribute
 import com.mehuljain.airshare.ipp.IppGroup
@@ -7,6 +7,8 @@ import com.mehuljain.airshare.ipp.IppOperation
 import com.mehuljain.airshare.ipp.IppStatus
 import com.mehuljain.airshare.ipp.IppTag
 import com.mehuljain.airshare.ipp.IppValue
+import com.mehuljain.airshare.transfer.ProgressInputStream
+import com.mehuljain.airshare.transfer.TransferCoordinator
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStream
@@ -34,8 +36,8 @@ class IppPrinterHandler(
      *                   e.g. "ipp://192.168.1.5:8631/ipp/print" (derived from the HTTP Host header)
      * @return IPP response (never throws for protocol errors; maps them to status codes)
      */
-    fun handle(request: IppMessage, document: InputStream, printerUri: String): IppMessage = try {
-        dispatch(request, document, printerUri)
+    fun handle(request: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L): IppMessage = try {
+        dispatch(request, document, printerUri, contentLength)
     } catch (e: IppError) {
         response(request, e.status, e.message)
     } catch (e: Exception) {
@@ -45,7 +47,7 @@ class IppPrinterHandler(
 
     private class IppError(val status: Int, message: String) : Exception(message)
 
-    private fun dispatch(req: IppMessage, document: InputStream, printerUri: String): IppMessage {
+    private fun dispatch(req: IppMessage, document: InputStream, printerUri: String, contentLength: Long = 0L): IppMessage {
         if (req.versionMajor != 1 && req.versionMajor != 2) {
             throw IppError(IppStatus.SERVER_ERROR_VERSION_NOT_SUPPORTED, "IPP version ${req.versionMajor}.${req.versionMinor} not supported")
         }
@@ -64,7 +66,7 @@ class IppPrinterHandler(
         if (op["printer-uri"]?.stringValue == null && op["job-uri"]?.stringValue == null) {
             throw IppError(IppStatus.CLIENT_ERROR_BAD_REQUEST, "Missing printer-uri")
         }
-        val ctx = Ctx(req, op, printerUri, config())
+        val ctx = Ctx(req, op, printerUri, config(), contentLength)
         return when (req.code) {
             IppOperation.GET_PRINTER_ATTRIBUTES -> getPrinterAttributes(ctx)
             IppOperation.VALIDATE_JOB -> { checkCompression(op); declaredFormat(ctx); ok(req) }
@@ -82,7 +84,13 @@ class IppPrinterHandler(
     }
 
     /** [config] is read once per request, so a mode switch applies from the next request on. */
-    private class Ctx(val req: IppMessage, val op: IppGroup, val printerUri: String, val config: PrinterConfig) {
+    private class Ctx(
+        val req: IppMessage,
+        val op: IppGroup,
+        val printerUri: String,
+        val config: PrinterConfig,
+        val contentLength: Long = 0L,
+    ) {
         val userName: String get() = op["requesting-user-name"]?.stringValue?.takeIf { it.isNotBlank() } ?: "anonymous"
         val requested: List<String>? get() = op["requested-attributes"]?.stringValues?.takeIf { it.isNotEmpty() }
     }
@@ -253,9 +261,40 @@ class IppPrinterHandler(
                 )
             }
         }
+        if (!ctx.config.autoAccept) {
+            val approved = TransferCoordinator.awaitApproval(
+                jobId = jobId,
+                senderName = ctx.userName,
+                jobName = jobName(ctx.op),
+                format = actualFormat ?: OCTET_STREAM,
+                totalBytes = ctx.contentLength,
+            )
+            if (!approved) {
+                drain(stream)
+                jobs.setState(jobId, JobState.CANCELED)
+                throw IppError(IppStatus.CLIENT_ERROR_NOT_POSSIBLE, "Transfer declined by recipient")
+            }
+        }
+
+        TransferCoordinator.startReceiving(
+            jobId = jobId,
+            senderName = ctx.userName,
+            jobName = jobName(ctx.op),
+            format = actualFormat ?: OCTET_STREAM,
+            totalBytes = ctx.contentLength,
+        )
+
+        val progressStream = ProgressInputStream(stream, ctx.contentLength) { read, total ->
+            TransferCoordinator.updateProgress(jobId, read, total)
+        }
+
         return try {
-            jobs.writeDocument(jobId, actualFormat, stream)
-        } catch (e: IOException) {
+            val stored = jobs.writeDocument(jobId, actualFormat, progressStream)
+            TransferCoordinator.finishTransfer(jobId, success = true, message = "Received successfully")
+            stored
+        } catch (e: Exception) {
+            TransferCoordinator.finishTransfer(jobId, success = false, message = e.message ?: "Failed")
+            if (e is IppError) throw e
             log.log(Level.WARNING, "Storing document for job $jobId failed", e)
             throw IppError(IppStatus.SERVER_ERROR_INTERNAL_ERROR, "Failed to store document: ${e.message}")
         }

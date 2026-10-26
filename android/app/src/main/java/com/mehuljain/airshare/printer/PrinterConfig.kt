@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.printer
+﻿package com.mehuljain.airshare.printer
 
 /** User-editable printer/receiver settings. */
 data class PrinterConfig(
@@ -25,6 +25,12 @@ data class PrinterConfig(
      * is extracted directly to Pictures/AirShare, preserving original EXIF metadata.
      */
     val extractPdfPhotos: Boolean = true,
+    /**
+     * When false (default), incoming transfers prompt the user with an AirDrop-style UI card
+     * showing sender name, file details, and Accept/Decline buttons.
+     * When true, incoming transfers are accepted automatically without asking.
+     */
+    val autoAccept: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_PORT = 8631

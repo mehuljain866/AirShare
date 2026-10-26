@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.ui
+﻿package com.mehuljain.airshare.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

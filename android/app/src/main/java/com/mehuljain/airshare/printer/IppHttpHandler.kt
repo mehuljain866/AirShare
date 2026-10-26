@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.http.HttpHandler
 import com.mehuljain.airshare.http.HttpRequest
@@ -50,7 +50,8 @@ class IppHttpHandler(
         }
         val host = request.host?.trim()?.takeIf { it.isNotEmpty() } ?: "localhost:${config().port}"
         val printerUri = "ipp://$host${PrinterConfig.RESOURCE_PATH}"
-        val response = handler.handle(message, request.body, printerUri)
+        val contentLength = request.headers["content-length"]?.toLongOrNull() ?: 0L
+        val response = handler.handle(message, request.body, printerUri, contentLength)
         return HttpResponse(200, IppCodec.encode(response), "application/ipp")
     }
 

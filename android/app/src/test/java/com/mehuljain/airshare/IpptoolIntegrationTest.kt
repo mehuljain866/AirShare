@@ -30,7 +30,7 @@ class IpptoolIntegrationTest {
     /** A small valid PDF generated per test: the CUPS sample documents are not shipped on every platform. */
     private lateinit var samplePdf: File
     /** Read per request by the handler; the conformance suites need compatibility mode (URF/PWG attributes). */
-    @Volatile private var config = PrinterConfig(name = "AirShare Test Device", port = 0, uuid = "12345678-1234-1234-1234-123456789abc", compatibilityMode = true)
+    @Volatile private var config = PrinterConfig(name = "AirShare Test Device", port = 0, uuid = "12345678-1234-1234-1234-123456789abc", compatibilityMode = true, autoAccept = true)
 
     @Before
     fun setUp() {

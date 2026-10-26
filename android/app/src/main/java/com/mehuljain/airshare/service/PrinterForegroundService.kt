@@ -19,6 +19,12 @@ import com.mehuljain.airshare.printer.IppHttpHandler
 import com.mehuljain.airshare.printer.IppPrinterHandler
 import com.mehuljain.airshare.printer.JobState
 import com.mehuljain.airshare.printer.PrintJob
+import com.mehuljain.airshare.transfer.AirShareOverlayManager
+import com.mehuljain.airshare.transfer.TransferCoordinator
+import com.mehuljain.airshare.transfer.TransferPromptActivity
+import com.mehuljain.airshare.transfer.TransferReceiver
+import com.mehuljain.airshare.transfer.TransferRequest
+import com.mehuljain.airshare.transfer.TransferUiState
 import com.mehuljain.airshare.ui.MainActivity
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -38,6 +44,7 @@ class PrinterForegroundService : Service() {
     private var port = PrinterController.config.value.port
     private var jobCount = 0
     private var seenStates: Map<Int, JobState>? = null
+    private var overlayManager: AirShareOverlayManager? = null
     @Volatile private var running = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -45,6 +52,8 @@ class PrinterForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
+        overlayManager = AirShareOverlayManager(this)
+        setupTransferCoordinator()
         scope.launchJobObserver()
     }
 
@@ -73,6 +82,10 @@ class PrinterForegroundService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        overlayManager?.dismiss()
+        overlayManager = null
+        TransferCoordinator.onRequestPrompt = null
+        TransferCoordinator.onDismissPrompt = null
         worker.execute { teardown() }
         worker.shutdown()
         val cur = PrinterController.status.value
@@ -225,6 +238,104 @@ class PrinterForegroundService : Service() {
         nm.createNotificationChannel(
             NotificationChannel(JOBS_CHANNEL_ID, getString(R.string.notification_channel_jobs), NotificationManager.IMPORTANCE_DEFAULT)
         )
+        val incomingCh = NotificationChannel(
+            INCOMING_CHANNEL_ID,
+            "Incoming transfers",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "AirShare incoming transfer alerts"
+            enableVibration(true)
+        }
+        nm.createNotificationChannel(incomingCh)
+    }
+
+    private fun setupTransferCoordinator() {
+        TransferCoordinator.onRequestPrompt = { req ->
+            if (overlayManager?.canDraw() == true) {
+                overlayManager?.show(req)
+            }
+            showTransferPromptNotification(req)
+        }
+
+        TransferCoordinator.onDismissPrompt = {
+            overlayManager?.dismiss()
+            dismissTransferPromptNotification()
+        }
+
+        TransferCoordinator.uiState
+            .onEach { state ->
+                when (state) {
+                    is TransferUiState.Receiving -> {
+                        overlayManager?.updateProgress(state.bytesRead, state.totalBytes, state.progress)
+                        updateTransferProgressNotification(state.request, state.bytesRead, state.totalBytes, state.progress)
+                    }
+                    is TransferUiState.Completed -> {
+                        overlayManager?.showCompleted(state.success, state.message)
+                        dismissTransferPromptNotification()
+                    }
+                    else -> {}
+                }
+            }
+            .launchIn(scope)
+    }
+
+    private fun showTransferPromptNotification(req: TransferRequest) {
+        val acceptPi = PendingIntent.getBroadcast(
+            this, 101,
+            Intent(this, TransferReceiver::class.java).setAction(TransferReceiver.ACTION_ACCEPT),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val declinePi = PendingIntent.getBroadcast(
+            this, 102,
+            Intent(this, TransferReceiver::class.java).setAction(TransferReceiver.ACTION_DECLINE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val fullScreenPi = PendingIntent.getActivity(
+            this, 103,
+            Intent(this, TransferPromptActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val n = NotificationCompat.Builder(this, INCOMING_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher)
+            .setContentTitle("AirShare")
+            .setContentText("${req.senderName} would like to share ${req.jobName}")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setFullScreenIntent(fullScreenPi, true)
+            .setAutoCancel(true)
+            .setOngoing(true)
+            .addAction(0, "Decline", declinePi)
+            .addAction(0, "Accept", acceptPi)
+            .build()
+
+        getSystemService(NotificationManager::class.java).notify(PROMPT_NOTIFICATION_ID, n)
+    }
+
+    private fun updateTransferProgressNotification(req: TransferRequest, bytesRead: Long, totalBytes: Long, progress: Float) {
+        val max = if (totalBytes > 0) 100 else 0
+        val curr = if (totalBytes > 0) (progress * 100).toInt() else 0
+        val text = if (totalBytes > 0) {
+            "Receiving ${curr}% · ${Formatter.formatShortFileSize(this, bytesRead)} / ${Formatter.formatShortFileSize(this, totalBytes)}"
+        } else {
+            "Receiving ${Formatter.formatShortFileSize(this, bytesRead)}"
+        }
+
+        val n = NotificationCompat.Builder(this, INCOMING_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher)
+            .setContentTitle("AirShare")
+            .setContentText(text)
+            .setProgress(max, curr, totalBytes <= 0)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .build()
+
+        getSystemService(NotificationManager::class.java).notify(PROMPT_NOTIFICATION_ID, n)
+    }
+
+    private fun dismissTransferPromptNotification() {
+        getSystemService(NotificationManager::class.java).cancel(PROMPT_NOTIFICATION_ID)
     }
 
     private fun localAddresses(): List<String> = try {
@@ -245,8 +356,10 @@ class PrinterForegroundService : Service() {
         const val ACTION_RESTART = "com.mehuljain.airshare.action.RESTART"
         private const val CHANNEL_ID = "printer"
         private const val JOBS_CHANNEL_ID = "jobs"
+        const val INCOMING_CHANNEL_ID = "incoming_transfers"
         private const val JOB_NOTIFICATION_BASE = 1000
         private const val NOTIFICATION_ID = 1
+        private const val PROMPT_NOTIFICATION_ID = 2
         private const val TAG = "AirShare"
     }
 }

@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.service
+﻿package com.mehuljain.airshare.service
 
 import android.content.Context
 import android.net.nsd.NsdManager

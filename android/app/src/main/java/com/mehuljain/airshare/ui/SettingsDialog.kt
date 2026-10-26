@@ -1,5 +1,9 @@
 package com.mehuljain.airshare.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +49,7 @@ fun SettingsDialog(
     var compat by remember { mutableStateOf(config.compatibilityMode) }
     var savePhotosAsImages by remember { mutableStateOf(config.savePhotosAsImages) }
     var extractPdfPhotos by remember { mutableStateOf(config.extractPdfPhotos) }
+    var autoAccept by remember { mutableStateOf(config.autoAccept) }
 
     val context = LocalContext.current
     val version = remember {
@@ -165,6 +170,62 @@ fun SettingsDialog(
                     Switch(checked = extractPdfPhotos, onCheckedChange = { extractPdfPhotos = it })
                 }
 
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(stringResource(R.string.ui_auto_accept_title), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            stringResource(R.string.ui_auto_accept_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = autoAccept, onCheckedChange = { autoAccept = it })
+                }
+
+                val canDrawOverlay = remember {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Settings.canDrawOverlays(context)
+                    } else true
+                }
+
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(stringResource(R.string.ui_overlay_permission_title), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            stringResource(R.string.ui_overlay_permission_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (canDrawOverlay) {
+                            Text(
+                                "✓ " + stringResource(R.string.ui_overlay_permission_granted),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    }
+                    if (!canDrawOverlay && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}"),
+                                )
+                                context.startActivity(intent)
+                            },
+                        ) {
+                            Text(stringResource(R.string.ui_overlay_permission_action))
+                        }
+                    }
+                }
+
                 SectionLabel(R.string.ui_section_about)
                 Text(
                     text = stringResource(R.string.ui_field_uuid),
@@ -196,6 +257,7 @@ fun SettingsDialog(
                             compatibilityMode = compat,
                             savePhotosAsImages = savePhotosAsImages,
                             extractPdfPhotos = extractPdfPhotos,
+                            autoAccept = autoAccept,
                         ),
                     )
                 },

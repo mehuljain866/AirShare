@@ -72,6 +72,12 @@
     <string name="ui_save_photos_as_image_desc">Save photos and single-page AirPrint raster jobs directly as JPEG images in Pictures/AirShare with EXIF metadata.</string>
     <string name="ui_extract_pdf_photos_title">Extract photos from PDF</string>
     <string name="ui_extract_pdf_photos_desc">Automatically extract embedded images from single-image PDFs and save as JPEG in Pictures/AirShare.</string>
+    <string name="ui_auto_accept_title">Auto-accept transfers</string>
+    <string name="ui_auto_accept_desc">Automatically accept incoming transfers without showing the confirmation prompt.</string>
+    <string name="ui_overlay_permission_title">Display over other apps</string>
+    <string name="ui_overlay_permission_desc">Show the floating AirDrop-style popup over any app when files arrive.</string>
+    <string name="ui_overlay_permission_granted">Enabled</string>
+    <string name="ui_overlay_permission_action">Enable</string>
     <string name="ui_section_about">About</string>
     <string name="ui_app_version">Version %1$s</string>
     <string name="ui_current_addresses">Current addresses</string>

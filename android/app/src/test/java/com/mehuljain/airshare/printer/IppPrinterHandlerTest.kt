@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.ipp.IppAttribute
 import com.mehuljain.airshare.ipp.IppCodec
@@ -22,7 +22,7 @@ import org.junit.Test
 class IppPrinterHandlerTest {
     private val printerUri = "ipp://192.168.1.5:8631/ipp/print"
     /** Most tests exercise compatibility mode (all formats); PDF-only tests switch [config] at runtime. */
-    private var config = PrinterConfig(name = "AirShare Test", uuid = "1234-5678", location = "Desk", compatibilityMode = true)
+    private var config = PrinterConfig(name = "AirShare Test", uuid = "1234-5678", location = "Desk", compatibilityMode = true, autoAccept = true)
     private var now = 1_700_000_000_000L
     private lateinit var store: InMemoryJobStore
     private lateinit var handler: IppPrinterHandler
@@ -622,5 +622,33 @@ class IppPrinterHandlerTest {
         val resp = h.handle(request(IppOperation.GET_JOBS), empty, printerUri)
         assertEquals(IppStatus.SERVER_ERROR_INTERNAL_ERROR, resp.code)
         assertNotNull(resp.operationAttributes!!["status-message"])
+    }
+
+    @Test
+    fun manualApprovalAccepts() {
+        val manualCfg = config.copy(autoAccept = false)
+        val h = IppPrinterHandler({ manualCfg }, store, { now })
+        val thread = Thread {
+            Thread.sleep(80)
+            com.mehuljain.airshare.transfer.TransferCoordinator.accept()
+        }
+        thread.start()
+        val resp = h.handle(request(IppOperation.PRINT_JOB, mime(PrinterAttributes.PDF)), body(bytes("%PDF-1.4\n")), printerUri)
+        assertEquals(IppStatus.SUCCESSFUL_OK, resp.code)
+        thread.join()
+    }
+
+    @Test
+    fun manualApprovalDeclines() {
+        val manualCfg = config.copy(autoAccept = false)
+        val h = IppPrinterHandler({ manualCfg }, store, { now })
+        val thread = Thread {
+            Thread.sleep(80)
+            com.mehuljain.airshare.transfer.TransferCoordinator.decline()
+        }
+        thread.start()
+        val resp = h.handle(request(IppOperation.PRINT_JOB, mime(PrinterAttributes.PDF)), body(bytes("%PDF-1.4\n")), printerUri)
+        assertEquals(IppStatus.CLIENT_ERROR_NOT_POSSIBLE, resp.code)
+        thread.join()
     }
 }

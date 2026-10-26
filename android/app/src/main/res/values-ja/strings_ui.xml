@@ -72,6 +72,12 @@
     <string name="ui_save_photos_as_image_desc">受信した写真および単一ページの AirPrint ジョブを JPEG 画像として Pictures/AirShare に EXIF メタデータ付きで保存します。</string>
     <string name="ui_extract_pdf_photos_title">PDF から写真を抽出</string>
     <string name="ui_extract_pdf_photos_desc">単一画像の PDF から埋め込み画像を自動抽出し、Pictures/AirShare に JPEG として保存します。</string>
+    <string name="ui_auto_accept_title">自動で受信を許可</string>
+    <string name="ui_auto_accept_desc">確認ダイアログを表示せず、自動で転送を開始します。</string>
+    <string name="ui_overlay_permission_title">他のアプリの上に重ねて表示</string>
+    <string name="ui_overlay_permission_desc">他のアプリやホーム画面の使用中にも AirDrop 風のポップアップを表示します。</string>
+    <string name="ui_overlay_permission_granted">許可済み</string>
+    <string name="ui_overlay_permission_action">設定を開く</string>
     <string name="ui_section_about">AirShare について</string>
     <string name="ui_app_version">バージョン %1$s</string>
     <string name="ui_current_addresses">現在の接続アドレス</string>

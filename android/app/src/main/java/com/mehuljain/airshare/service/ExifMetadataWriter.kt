@@ -1,4 +1,4 @@
-package com.mehuljain.airshare.service
+﻿package com.mehuljain.airshare.service
 
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface

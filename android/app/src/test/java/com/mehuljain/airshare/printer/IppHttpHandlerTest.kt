@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.http.HttpRequest
 import com.mehuljain.airshare.ipp.IppAttribute
@@ -17,7 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IppHttpHandlerTest {
-    private var cfg = PrinterConfig(name = "AirShare <Office>", uuid = "abcd-ef", compatibilityMode = true)
+    private var cfg = PrinterConfig(name = "AirShare <Office>", uuid = "abcd-ef", compatibilityMode = true, autoAccept = true)
     private val store = InMemoryJobStore()
     private var icon: ByteArray? = null
     private val http = IppHttpHandler(IppPrinterHandler({ cfg }, store), { cfg }, store, { icon })
