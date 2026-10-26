@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import XCTest
 import zlib
 @testable import AirShareCore
@@ -314,7 +314,7 @@ final class RasterDecoderTests: XCTestCase {
 /// Shared helpers for the raster / PDF tests (gzip fixtures, zlib inflate, sips).
 
 enum RasterTestSupport {
-    static let scratch = URL(fileURLWithPath: "/private/tmp/claude-502/-Users-tsumori-labo-AirShare/6981ed8a-48ee-456d-b11a-413bc8ce5277/scratchpad")
+    static let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("airshare-scratch")
 
     static func fixtureURL(_ name: String) -> URL {
         if let u = Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures") { return u }
