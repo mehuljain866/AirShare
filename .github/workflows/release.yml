@@ -3,7 +3,7 @@ name: Android release
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:   # dry run: builds unsigned debug APK as artifact, no GitHub Release
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -49,17 +49,17 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          mkdir -p dist
           if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
             ./gradlew assembleRelease --no-daemon \
               -PversionName="${{ steps.ver.outputs.name }}" -PversionCode="${{ steps.ver.outputs.code }}"
-            mkdir -p dist
             cp app/build/outputs/apk/release/app-release.apk "dist/AirShare-${{ steps.ver.outputs.name }}.apk"
           else
             ./gradlew assembleDebug --no-daemon \
               -PversionName="${{ steps.ver.outputs.name }}" -PversionCode="${{ steps.ver.outputs.code }}"
-            mkdir -p dist
-            cp app/build/outputs/apk/debug/app-debug.apk "dist/AirShare-${{ steps.ver.outputs.name }}-debug.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "dist/AirShare-${{ steps.ver.outputs.name }}.apk"
           fi
+          cp dist/AirShare-*.apk dist/AirShare.apk
           (cd dist && sha256sum *.apk > checksums.sha256)
 
       - uses: actions/upload-artifact@v4
@@ -73,4 +73,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF#refs/tags/}" dist/* \
-            --title "AirShare ${{ steps.ver.outputs.name }}" --generate-notes
+            --title "AirShare v${{ steps.ver.outputs.name }}" --generate-notes

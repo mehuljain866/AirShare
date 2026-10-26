@@ -1,5 +1,10 @@
 # AirShare — Wireless Photo & Document Transfer via Print
 
+> ### 📲 [Download Latest AirShare APK](https://github.com/mehuljain866/AirShare/releases/latest)
+> Tap the link above, then tap **AirShare.apk** to download and install directly on your Android phone.
+
+---
+
 **AirShare** turns an Android device into a virtual AirPrint / IPP Everywhere receiver so you can wirelessly transfer photos and documents from any device — iPhone, iPad, Mac, Windows PC, or Android — directly to your device using the standard print menu. No accounts, no cables, no cloud.
 
 ## Features
@@ -38,11 +43,9 @@ AirShare advertises itself on the local network as an IPP Everywhere / AirPrint 
 - **Save photos as JPEG**: When enabled (default), photos sent via AirPrint are saved as JPEG in `Pictures/AirShare`.
 - **Extract photos from PDF**: When enabled (default), single-image PDFs have the original JPEG photo extracted.
 
-## Building the APK
+## Building the APK locally
 
 ```sh
 cd android
 ./gradlew assembleDebug     # Output in app/build/outputs/apk/debug/app-debug.apk
 ```
-
-GitHub Actions automatically builds the debug APK on every commit to `main`. You can download it directly from the **Actions** tab → latest workflow run → **airshare-debug-apk** artifact.
