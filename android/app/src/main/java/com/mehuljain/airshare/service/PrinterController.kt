@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.service
+package com.mehuljain.airshare.service
 
 import android.app.Application
 import android.content.Context
@@ -30,11 +30,13 @@ object PrinterController {
     private val lock = Any()
     private val _status = MutableStateFlow(PrinterStatus())
     private val _remainingSeconds = MutableStateFlow<Int?>(null)
+    private val _autoOffEndTime = MutableStateFlow<Long?>(null)
     private var _config: MutableStateFlow<PrinterConfig>? = null
     private var store: JobStore? = null
 
     val status: StateFlow<PrinterStatus> get() = _status.asStateFlow()
     val remainingSeconds: StateFlow<Int?> get() = _remainingSeconds.asStateFlow()
+    val autoOffEndTime: StateFlow<Long?> get() = _autoOffEndTime.asStateFlow()
 
     /** Persisted configuration (SharedPreferences). First access generates a default name + uuid. */
     val config: StateFlow<PrinterConfig> get() = configFlow(null).asStateFlow()
@@ -52,6 +54,13 @@ object PrinterController {
             val s = _status.value.state
             if (s == ServiceState.STARTING || s == ServiceState.RUNNING) return
             _status.value = PrinterStatus(ServiceState.STARTING, cfg.port)
+            if (cfg.autoOffMinutes > 0) {
+                _autoOffEndTime.value = android.os.SystemClock.elapsedRealtime() + (cfg.autoOffMinutes * 60 * 1000L)
+                _remainingSeconds.value = cfg.autoOffMinutes * 60
+            } else {
+                _autoOffEndTime.value = null
+                _remainingSeconds.value = null
+            }
         }
         ContextCompat.startForegroundService(ctx, serviceIntent(ctx, PrinterForegroundService.ACTION_START))
     }
@@ -61,8 +70,10 @@ object PrinterController {
         val ctx = context.applicationContext
         val s = _status.value.state
         if (s == ServiceState.STOPPED) return
+        _autoOffEndTime.value = null
+        _remainingSeconds.value = null
+        _status.value = PrinterStatus(ServiceState.STOPPED, _status.value.port)
         if (s == ServiceState.ERROR) {
-            _status.value = PrinterStatus(ServiceState.STOPPED, _status.value.port)
             return
         }
         ctx.startService(serviceIntent(ctx, PrinterForegroundService.ACTION_STOP))
@@ -97,6 +108,10 @@ object PrinterController {
 
     internal fun publishRemainingSeconds(secs: Int?) {
         _remainingSeconds.value = secs
+    }
+
+    internal fun publishAutoOffEndTime(timeMs: Long?) {
+        _autoOffEndTime.value = timeMs
     }
 
     private fun serviceIntent(ctx: Context, action: String) =

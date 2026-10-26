@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.service
+package com.mehuljain.airshare.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.IBinder
+import android.os.SystemClock
 import android.text.format.Formatter
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -88,6 +89,7 @@ class PrinterForegroundService : Service() {
         timerJob?.cancel()
         timerJob = null
         PrinterController.publishRemainingSeconds(null)
+        PrinterController.publishAutoOffEndTime(null)
         TransferCoordinator.onRequestPrompt = null
         TransferCoordinator.onDismissPrompt = null
         worker.execute { teardown() }
@@ -96,6 +98,7 @@ class PrinterForegroundService : Service() {
         if (cur.state != ServiceState.ERROR) {
             PrinterController.publishStatus(cur.copy(state = ServiceState.STOPPED, addresses = emptyList(), error = null))
         }
+        notifyWidgets()
         super.onDestroy()
     }
 
@@ -171,6 +174,7 @@ class PrinterForegroundService : Service() {
                 startAutoOffTimer(cfg.autoOffMinutes * 60)
             } else {
                 PrinterController.publishRemainingSeconds(null)
+                PrinterController.publishAutoOffEndTime(null)
             }
             PrinterController.publishStatus(
                 PrinterStatus(ServiceState.RUNNING, srv.boundPort, localAddresses(), null)
@@ -190,11 +194,16 @@ class PrinterForegroundService : Service() {
 
     private fun startAutoOffTimer(totalSecs: Int) {
         timerJob?.cancel()
+        val targetEndTime = SystemClock.elapsedRealtime() + totalSecs * 1000L
+        PrinterController.publishAutoOffEndTime(targetEndTime)
         timerJob = scope.launch {
             var remaining = totalSecs
             while (remaining > 0 && running) {
                 PrinterController.publishRemainingSeconds(remaining)
-                if (remaining % 10 == 0) notifyUpdate()
+                if (remaining % 10 == 0) {
+                    notifyUpdate()
+                    notifyWidgets()
+                }
                 delay(1000L)
                 remaining--
             }
@@ -213,6 +222,7 @@ class PrinterForegroundService : Service() {
         timerJob?.cancel()
         timerJob = null
         PrinterController.publishRemainingSeconds(null)
+        PrinterController.publishAutoOffEndTime(null)
         notifyWidgets()
         try { advertiser?.unregister() } catch (e: Throwable) { Log.w(TAG, "nsd stop", e) }
         advertiser = null

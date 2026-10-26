@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.widget
+package com.mehuljain.airshare.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -7,11 +7,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.SystemClock
+import android.view.View
 import android.widget.RemoteViews
 import com.mehuljain.airshare.R
 import com.mehuljain.airshare.service.PrinterController
 import com.mehuljain.airshare.service.ServiceState
-import java.util.Locale
 
 class AirShareWidgetProvider : AppWidgetProvider() {
 
@@ -41,8 +42,10 @@ class AirShareWidgetProvider : AppWidgetProvider() {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, AirShareWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            for (id in appWidgetIds) {
-                updateAppWidget(context, appWidgetManager, id)
+            if (appWidgetIds != null && appWidgetIds.isNotEmpty()) {
+                for (id in appWidgetIds) {
+                    updateAppWidget(context, appWidgetManager, id)
+                }
             }
         }
 
@@ -50,20 +53,31 @@ class AirShareWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_airshare)
             val status = PrinterController.status.value
             val isRunning = status.state == ServiceState.RUNNING || status.state == ServiceState.STARTING
-            val remainingSecs = PrinterController.remainingSeconds.value
+            val autoOffEndTime = PrinterController.autoOffEndTime.value
+            val now = SystemClock.elapsedRealtime()
 
             if (isRunning) {
-                val timerText = if (remainingSecs != null && remainingSecs > 0) {
-                    val m = remainingSecs / 60
-                    val s = remainingSecs % 60
-                    String.format(Locale.getDefault(), "Ready · Auto-off %02d:%02d", m, s)
-                } else {
-                    "Ready to receive"
-                }
-                views.setTextViewText(R.id.widget_status, timerText)
-                views.setTextColor(R.id.widget_status, Color.parseColor("#0A84FF"))
                 views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_power_on)
+                if (autoOffEndTime != null && autoOffEndTime > now) {
+                    // Use native Chronometer for battery-friendly, second-by-second countdown in Launcher
+                    views.setViewVisibility(R.id.widget_status, View.GONE)
+                    views.setViewVisibility(R.id.widget_timer, View.VISIBLE)
+                    views.setTextColor(R.id.widget_timer, Color.parseColor("#0A84FF"))
+                    views.setChronometer(R.id.widget_timer, autoOffEndTime, "Ready · Auto-off %s", true)
+                    views.setChronometerCountDown(R.id.widget_timer, true)
+                } else {
+                    // Timer disabled ("Never") or expired
+                    views.setChronometer(R.id.widget_timer, 0, null, false)
+                    views.setViewVisibility(R.id.widget_timer, View.GONE)
+                    views.setViewVisibility(R.id.widget_status, View.VISIBLE)
+                    views.setTextViewText(R.id.widget_status, "Ready to receive")
+                    views.setTextColor(R.id.widget_status, Color.parseColor("#0A84FF"))
+                }
             } else {
+                // Stopped / Off
+                views.setChronometer(R.id.widget_timer, 0, null, false)
+                views.setViewVisibility(R.id.widget_timer, View.GONE)
+                views.setViewVisibility(R.id.widget_status, View.VISIBLE)
                 views.setTextViewText(R.id.widget_status, "Off · Tap to start")
                 views.setTextColor(R.id.widget_status, Color.parseColor("#8E8E93"))
                 views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_power_off)
