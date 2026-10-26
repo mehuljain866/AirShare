@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">AirShare</string>
+    <string name="notification_channel">AirShare サービス</string>
+    <string name="notification_title">AirShare がポート %1$d で待機中</string>
+    <string name="notification_jobs">受信数: %1$d</string>
+    <string name="notification_stop">停止</string>
+    <string name="notification_channel_jobs">受信アイテム</string>
+    <string name="job_fallback_name">アイテム %1$d</string>
+</resources>

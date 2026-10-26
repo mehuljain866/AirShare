@@ -1,0 +1,22 @@
+# Android
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+
+# iOS / Xcode
+.build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.xcuserstate
+.swiftpm/xcode/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Keys / secrets
+*.jks
+*.keystore

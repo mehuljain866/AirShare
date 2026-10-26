@@ -1,0 +1,53 @@
+﻿name: AirShare
+options:
+  developmentLanguage: en
+  bundleIdPrefix: com.mehuljain.airshare
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  AirShareCore:
+    path: ..
+targets:
+  AirShare:
+    type: application
+    platform: iOS
+    sources:
+      - AirShare
+    dependencies:
+      - package: AirShareCore
+    info:
+      path: AirShare/Info.plist
+      properties:
+        CFBundleDisplayName: AirShare
+        NSLocalNetworkUsageDescription: AirShare advertises itself as a network printer so other devices can print to it.
+        NSBonjourServices:
+          - _ipp._tcp
+          - _universal._sub._ipp._tcp
+          - _print._sub._ipp._tcp
+        ITSAppUsesNonExemptEncryption: false
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mehuljain.airshare
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: J3LZEFNZVJ
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
