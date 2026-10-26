@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logos/logo.png" alt="AirShare Logo" width="128" height="128" />
+</p>
+
 # AirShare — Wireless Photo & Document Transfer via Print
 
 > ### 📲 [Download Latest AirShare APK](https://github.com/mehuljain866/AirShare/releases/latest)
