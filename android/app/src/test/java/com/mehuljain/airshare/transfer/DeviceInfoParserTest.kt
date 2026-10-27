@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.transfer
+package com.mehuljain.airshare.transfer
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -72,5 +72,47 @@ class DeviceInfoParserTest {
         )
         assertEquals("Nearby device", info.deviceDisplayName)
         assertEquals("a photo", info.contentDisplayName)
+    }
+
+    @Test
+    fun parseIPadScreenshot() {
+        val info = DeviceInfoParser.parse(
+            userAgent = "AirPrint/1.0 (iPad; CPU OS 10_3_3 like Mac OS X)",
+            userName = "mobile",
+            jobName = "Screenshot",
+            format = "application/pdf",
+        )
+        assertEquals("iPad", info.deviceDisplayName)
+        assertEquals("a screenshot", info.contentDisplayName)
+        assertTrue(info.isPhoto)
+        assertEquals("Gallery", info.destinationStorage)
+    }
+
+    @Test
+    fun parseIPadNamedScreenshot() {
+        val info = DeviceInfoParser.parse(
+            userAgent = "AirPrint/1.0 (iPad; CPU OS 10_3_3 like Mac OS X)",
+            userName = "Mehul",
+            jobName = "Screenshot 2026-10-26 at 18.00.00",
+            format = "application/pdf",
+        )
+        assertEquals("Mehul's iPad", info.deviceDisplayName)
+        assertEquals("a screenshot", info.contentDisplayName)
+        assertTrue(info.isPhoto)
+        assertEquals("Gallery", info.destinationStorage)
+    }
+
+    @Test
+    fun parseIPadPhoto() {
+        val info = DeviceInfoParser.parse(
+            userAgent = "AirPrint/1.0 (iPad; CPU OS 10_3_3 like Mac OS X)",
+            userName = "Mehul",
+            jobName = "Photo",
+            format = "application/pdf",
+        )
+        assertEquals("Mehul's iPad", info.deviceDisplayName)
+        assertEquals("a photo", info.contentDisplayName)
+        assertTrue(info.isPhoto)
+        assertEquals("Gallery", info.destinationStorage)
     }
 }

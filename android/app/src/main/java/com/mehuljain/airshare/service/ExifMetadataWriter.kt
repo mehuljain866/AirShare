@@ -1,9 +1,10 @@
-﻿package com.mehuljain.airshare.service
+package com.mehuljain.airshare.service
 
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import com.mehuljain.airshare.printer.JobMetadata
 import com.mehuljain.airshare.raster.RasterPageInfo
+import com.mehuljain.airshare.transfer.DeviceInfoParser
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,14 +60,43 @@ object ExifMetadataWriter {
             }
 
             // Software & Model
-            if (exif.getAttribute(ExifInterface.TAG_SOFTWARE) == null) {
-                exif.setAttribute(ExifInterface.TAG_SOFTWARE, "AirShare")
+            val device = DeviceInfoParser.parse(metadata.userAgent, metadata.userName, metadata.name, null)
+            val isApple = metadata.userAgent?.contains("iPad", ignoreCase = true) == true ||
+                metadata.userAgent?.contains("iPhone", ignoreCase = true) == true ||
+                metadata.userAgent?.contains("Mac", ignoreCase = true) == true ||
+                device.deviceDisplayName.contains("iPad", ignoreCase = true) ||
+                device.deviceDisplayName.contains("iPhone", ignoreCase = true) ||
+                device.deviceDisplayName.contains("Mac", ignoreCase = true)
+
+            val make = when {
+                device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Microsoft"
+                device.deviceDisplayName.contains("Android", ignoreCase = true) || device.deviceDisplayName.contains("Samsung", ignoreCase = true) -> "Samsung"
+                device.deviceDisplayName.contains("Pixel", ignoreCase = true) -> "Google"
+                else -> "Apple"
             }
+
+            val model = when {
+                device.deviceDisplayName.contains("iPad", ignoreCase = true) -> "iPad"
+                device.deviceDisplayName.contains("iPhone", ignoreCase = true) -> "iPhone"
+                device.deviceDisplayName.contains("Mac", ignoreCase = true) -> "Mac"
+                device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Windows PC"
+                else -> if (isApple) "iPad" else "AirPrint Receiver"
+            }
+
+            val sw = when {
+                isApple -> "iOS"
+                device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Windows"
+                else -> "AirShare"
+            }
+
             if (exif.getAttribute(ExifInterface.TAG_MAKE) == null) {
-                exif.setAttribute(ExifInterface.TAG_MAKE, "AirShare")
+                exif.setAttribute(ExifInterface.TAG_MAKE, make)
             }
             if (exif.getAttribute(ExifInterface.TAG_MODEL) == null) {
-                exif.setAttribute(ExifInterface.TAG_MODEL, "AirPrint Receiver")
+                exif.setAttribute(ExifInterface.TAG_MODEL, model)
+            }
+            if (exif.getAttribute(ExifInterface.TAG_SOFTWARE) == null) {
+                exif.setAttribute(ExifInterface.TAG_SOFTWARE, sw)
             }
 
             // Resolution & dimensions if available from raster

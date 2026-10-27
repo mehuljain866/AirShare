@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import java.io.File
 
@@ -11,6 +11,7 @@ data class JobMetadata(
     val name: String = "",
     val userName: String = "",
     val createdAt: Long = System.currentTimeMillis(),
+    val userAgent: String? = null,
 )
 
 /**

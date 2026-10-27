@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.transfer
+package com.mehuljain.airshare.transfer
 
 import android.graphics.Bitmap
 import kotlinx.coroutines.CompletableDeferred
@@ -15,6 +15,7 @@ data class TransferRequest(
     val totalBytes: Long = 0,
     val userAgent: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    val batchIndex: Int = 1,
 ) {
     val parsedInfo: DeviceInfoParser.ParsedInfo get() = DeviceInfoParser.parse(userAgent, senderName, jobName, format)
     val promptSubtitle: String get() = "${parsedInfo.deviceDisplayName} would like to share ${parsedInfo.contentDisplayName}"
@@ -54,9 +55,25 @@ object TransferCoordinator {
     var onRequestPrompt: ((TransferRequest) -> Unit)? = null
     var onDismissPrompt: (() -> Unit)? = null
 
+    private val batchLock = Any()
+    @Volatile private var authorizedBatchSender: String? = null
+    @Volatile private var batchExpiresAtMs: Long = 0L
+    @Volatile private var batchCount: Int = 0
+    @Volatile private var declinedBatchSender: String? = null
+    @Volatile private var declinedExpiresAtMs: Long = 0L
+    private val jobUserAgents = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    fun recordUserAgent(jobId: Int, userAgent: String?) {
+        if (!userAgent.isNullOrBlank()) jobUserAgents[jobId] = userAgent
+    }
+
+    fun getUserAgent(jobId: Int): String? = jobUserAgents[jobId]
+
     /**
      * Called on connection thread in IppPrinterHandler.
      * Blocks until user accepts, declines, or timeout (45s).
+     * If the user already accepted an item from this sender within the last 30s,
+     * subsequent items in the batch are automatically accepted without prompting again.
      */
     fun awaitApproval(
         jobId: Int,
@@ -66,6 +83,37 @@ object TransferCoordinator {
         totalBytes: Long,
         userAgent: String? = null,
     ): Boolean {
+        recordUserAgent(jobId, userAgent)
+        val senderKey = "${senderName}@@${userAgent.orEmpty()}"
+        val now = System.currentTimeMillis()
+
+        val isBatchAutoApproved = synchronized(batchLock) {
+            if (declinedBatchSender == senderKey && now < declinedExpiresAtMs) {
+                return false
+            }
+            if (authorizedBatchSender == senderKey && now < batchExpiresAtMs) {
+                batchExpiresAtMs = now + 30_000L
+                batchCount++
+                true
+            } else {
+                false
+            }
+        }
+
+        if (isBatchAutoApproved) {
+            val req = TransferRequest(
+                jobId = jobId,
+                senderName = senderName,
+                jobName = jobName,
+                format = format,
+                totalBytes = totalBytes,
+                userAgent = userAgent,
+                batchIndex = batchCount,
+            )
+            activeRequest = req
+            return true
+        }
+
         val req = TransferRequest(
             jobId = jobId,
             senderName = senderName,
@@ -73,6 +121,7 @@ object TransferCoordinator {
             format = format,
             totalBytes = totalBytes,
             userAgent = userAgent,
+            batchIndex = 1,
         )
         activeRequest = req
         val deferred = CompletableDeferred<Boolean>()
@@ -89,9 +138,21 @@ object TransferCoordinator {
 
         pendingDeferred = null
         if (!accepted) {
+            synchronized(batchLock) {
+                declinedBatchSender = senderKey
+                declinedExpiresAtMs = System.currentTimeMillis() + 20_000L
+                authorizedBatchSender = null
+            }
             _uiState.value = TransferUiState.Completed(req, success = false, message = "Declined")
             onDismissPrompt?.invoke()
             activeRequest = null
+        } else {
+            synchronized(batchLock) {
+                authorizedBatchSender = senderKey
+                batchExpiresAtMs = System.currentTimeMillis() + 30_000L
+                batchCount = 1
+                declinedBatchSender = null
+            }
         }
         return accepted
     }
@@ -104,6 +165,7 @@ object TransferCoordinator {
         totalBytes: Long,
         userAgent: String? = null,
     ) {
+        recordUserAgent(jobId, userAgent)
         val req = activeRequest ?: TransferRequest(
             jobId = jobId,
             senderName = senderName,
@@ -111,6 +173,7 @@ object TransferCoordinator {
             format = format,
             totalBytes = totalBytes,
             userAgent = userAgent,
+            batchIndex = maxOf(1, batchCount),
         )
         activeRequest = req
         val currentThumb = (_uiState.value as? TransferUiState.Prompt)?.thumbnail
@@ -152,6 +215,11 @@ object TransferCoordinator {
     }
 
     fun finishTransfer(jobId: Int, success: Boolean, message: String = if (success) "Saved" else "Failed") {
+        synchronized(batchLock) {
+            if (success) {
+                batchExpiresAtMs = System.currentTimeMillis() + 30_000L
+            }
+        }
         val req = activeRequest ?: return
         val currentThumb = when (val s = _uiState.value) {
             is TransferUiState.Receiving -> s.thumbnail
@@ -163,14 +231,37 @@ object TransferCoordinator {
     }
 
     fun accept() {
+        synchronized(batchLock) {
+            activeRequest?.let { req ->
+                authorizedBatchSender = "${req.senderName}@@${req.userAgent.orEmpty()}"
+                batchExpiresAtMs = System.currentTimeMillis() + 30_000L
+                batchCount = 1
+                declinedBatchSender = null
+            }
+        }
         pendingDeferred?.complete(true)
     }
 
     fun decline() {
+        synchronized(batchLock) {
+            activeRequest?.let { req ->
+                declinedBatchSender = "${req.senderName}@@${req.userAgent.orEmpty()}"
+                declinedExpiresAtMs = System.currentTimeMillis() + 20_000L
+                authorizedBatchSender = null
+            }
+        }
         pendingDeferred?.complete(false)
     }
 
     fun reset() {
+        synchronized(batchLock) {
+            authorizedBatchSender = null
+            batchExpiresAtMs = 0L
+            batchCount = 0
+            declinedBatchSender = null
+            declinedExpiresAtMs = 0L
+            jobUserAgents.clear()
+        }
         _uiState.value = TransferUiState.Idle
         onDismissPrompt?.invoke()
         activeRequest = null

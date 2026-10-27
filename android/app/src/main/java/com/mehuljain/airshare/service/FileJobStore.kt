@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.service
+package com.mehuljain.airshare.service
 
 import com.mehuljain.airshare.printer.DocumentConverter
 import com.mehuljain.airshare.printer.DocumentExporter
@@ -99,7 +99,8 @@ class FileJobStore(
             var finalSize = size
             if (converter != null) {
                 try {
-                    val meta = JobMetadata(existing.id, existing.name, existing.userName, existing.createdAt)
+                    val ua = com.mehuljain.airshare.transfer.TransferCoordinator.getUserAgent(existing.id)
+                    val meta = JobMetadata(existing.id, existing.name, existing.userName, existing.createdAt, userAgent = ua)
                     val result = converter.convert(target, format, meta) { ext -> File(dir, "$jobId.$ext") }
                     if (result != null) {
                         finalFile = result.file

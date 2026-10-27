@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.transfer
+package com.mehuljain.airshare.transfer
 
 import java.util.Locale
 import java.util.regex.Pattern
@@ -16,7 +16,7 @@ object DeviceInfoParser {
     )
 
     private val GENERIC_JOB_NAMES = setOf(
-        "untitled", "print job", "print-job", "document", "photo or document", "photo", "image",
+        "untitled", "print job", "print-job", "document", "photo or document",
     )
 
     fun parse(
@@ -75,8 +75,15 @@ object DeviceInfoParser {
         val fmt = format?.lowercase(Locale.ROOT) ?: ""
         if (fmt.startsWith("image/") || fmt == "image/urf" || fmt == "image/pwg-raster") return true
         val job = jobName?.lowercase(Locale.ROOT) ?: ""
-        return job.endsWith(".jpg") || job.endsWith(".jpeg") || job.endsWith(".png") ||
-            job.endsWith(".heic") || job.endsWith(".webp") || job.startsWith("img_") || job.startsWith("dsc_")
+        if (job.endsWith(".jpg") || job.endsWith(".jpeg") || job.endsWith(".png") ||
+            job.endsWith(".heic") || job.endsWith(".webp") || job.startsWith("img_") || job.startsWith("dsc_")) {
+            return true
+        }
+        val keywords = listOf(
+            "photo", "image", "picture", "screenshot", "screen shot", "screen-shot",
+            "snapshot", "capture", "camera", "dcim", "wallpaper",
+        )
+        return keywords.any { job.contains(it) }
     }
 
     private fun parseContentDescription(rawJob: String?, format: String?, isImage: Boolean): String {
@@ -87,13 +94,22 @@ object DeviceInfoParser {
         val countMatch = Pattern.compile("(\\d+)\\s*(?:photos?|images?|pictures?|files?|items?)", Pattern.CASE_INSENSITIVE).matcher(job)
         if (countMatch.find()) {
             val count = countMatch.group(1)?.toIntOrNull() ?: 1
-            return if (isImage) "$count photos" else "$count documents"
+            return if (isImage) (if (count == 1) "a photo" else "$count photos")
+                   else (if (count == 1) "a document" else "$count documents")
         }
 
         val parenMatch = Pattern.compile("photos?\\s*\\((\\d+)\\)", Pattern.CASE_INSENSITIVE).matcher(job)
         if (parenMatch.find()) {
             val count = parenMatch.group(1)?.toIntOrNull() ?: 1
-            return "$count photos"
+            return if (count == 1) "a photo" else "$count photos"
+        }
+
+        if (lower.contains("screenshot") || lower.contains("screen shot")) {
+            return "a screenshot"
+        }
+
+        if (lower == "photo" || lower == "photos" || lower == "image" || lower == "images" || lower == "picture") {
+            return "a photo"
         }
 
         // Single item

@@ -365,10 +365,11 @@ class PrinterForegroundService : Service() {
     private fun updateTransferProgressNotification(req: TransferRequest, bytesRead: Long, totalBytes: Long, progress: Float) {
         val max = if (totalBytes > 0) 100 else 0
         val curr = if (totalBytes > 0) (progress * 100).toInt() else 0
+        val prefix = if (req.batchIndex > 1) "Receiving item ${req.batchIndex} · " else "Receiving "
         val text = if (totalBytes > 0) {
-            "Receiving ${curr}% · ${Formatter.formatShortFileSize(this, bytesRead)} / ${Formatter.formatShortFileSize(this, totalBytes)}"
+            "${prefix}${curr}% · ${Formatter.formatShortFileSize(this, bytesRead)} / ${Formatter.formatShortFileSize(this, totalBytes)}"
         } else {
-            "Receiving ${Formatter.formatShortFileSize(this, bytesRead)}"
+            "${prefix}${Formatter.formatShortFileSize(this, bytesRead)}"
         }
 
         val largeIcon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
