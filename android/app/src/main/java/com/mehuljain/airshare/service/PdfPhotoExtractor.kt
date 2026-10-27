@@ -8,6 +8,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.mehuljain.airshare.printer.ConvertedDocument
 import com.mehuljain.airshare.printer.JobMetadata
+import com.mehuljain.airshare.raster.PixelFormat
 import com.mehuljain.airshare.raster.RasterPageInfo
 import java.io.File
 import java.io.FileOutputStream
@@ -74,7 +75,7 @@ object PdfPhotoExtractor {
                         }
                         val dimensions = findImageDimensions(text)
                         val pageInfo = dimensions?.let { (w, h) ->
-                            RasterPageInfo(1, w, h, 300, 300)
+                            RasterPageInfo(w, h, 300, 300, PixelFormat.RGB_24)
                         }
                         ExifMetadataWriter.writeMetadata(out, effectiveMetadata, pageInfo)
                         return ConvertedDocument(out, "image/jpeg")
@@ -129,7 +130,7 @@ object PdfPhotoExtractor {
                 }
                 bitmap.recycle()
 
-                val pageInfo = RasterPageInfo(1, safeW, safeH, 300, 300)
+                val pageInfo = RasterPageInfo(safeW, safeH, 300, 300, PixelFormat.RGB_24)
                 ExifMetadataWriter.writeMetadata(out, metadata, pageInfo)
                 ConvertedDocument(out, "image/jpeg")
             } finally {
