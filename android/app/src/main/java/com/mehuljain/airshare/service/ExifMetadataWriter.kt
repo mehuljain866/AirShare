@@ -33,13 +33,13 @@ object ExifMetadataWriter {
             }
             val dateStr = dateFmt.format(date)
 
-            if (exif.getAttribute(ExifInterface.TAG_DATETIME) == null) {
+            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME) == null) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME, dateStr)
             }
-            if (exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL) == null) {
+            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL) == null) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, dateStr)
             }
-            if (exif.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED) == null) {
+            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED) == null) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME_DIGITIZED, dateStr)
             }
 
@@ -66,7 +66,9 @@ object ExifMetadataWriter {
                 metadata.userAgent?.contains("Mac", ignoreCase = true) == true ||
                 device.deviceDisplayName.contains("iPad", ignoreCase = true) ||
                 device.deviceDisplayName.contains("iPhone", ignoreCase = true) ||
-                device.deviceDisplayName.contains("Mac", ignoreCase = true)
+                device.deviceDisplayName.contains("Mac", ignoreCase = true) ||
+                metadata.producer?.contains("iOS", ignoreCase = true) == true ||
+                metadata.creator?.contains("MobileSlideShow", ignoreCase = true) == true
 
             val make = when {
                 device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Microsoft"
@@ -76,14 +78,16 @@ object ExifMetadataWriter {
             }
 
             val model = when {
-                device.deviceDisplayName.contains("iPad", ignoreCase = true) -> "iPad"
-                device.deviceDisplayName.contains("iPhone", ignoreCase = true) -> "iPhone"
+                device.deviceDisplayName.contains("iPad", ignoreCase = true) || metadata.userAgent?.contains("iPad", ignoreCase = true) == true -> "iPad"
+                device.deviceDisplayName.contains("iPhone", ignoreCase = true) || metadata.userAgent?.contains("iPhone", ignoreCase = true) == true -> "iPhone"
                 device.deviceDisplayName.contains("Mac", ignoreCase = true) -> "Mac"
                 device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Windows PC"
-                else -> if (isApple) "iPad" else "AirPrint Receiver"
+                isApple -> "iPhone"
+                else -> "AirShare Receiver"
             }
 
             val sw = when {
+                !metadata.producer.isNullOrBlank() -> metadata.producer
                 isApple -> "iOS"
                 device.deviceDisplayName.contains("Windows", ignoreCase = true) -> "Windows"
                 else -> "AirShare"

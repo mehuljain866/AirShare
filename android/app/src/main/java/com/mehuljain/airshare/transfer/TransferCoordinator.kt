@@ -62,12 +62,16 @@ object TransferCoordinator {
     @Volatile private var declinedBatchSender: String? = null
     @Volatile private var declinedExpiresAtMs: Long = 0L
     private val jobUserAgents = java.util.concurrent.ConcurrentHashMap<Int, String>()
+    @Volatile private var lastKnownUserAgent: String? = null
 
     fun recordUserAgent(jobId: Int, userAgent: String?) {
-        if (!userAgent.isNullOrBlank()) jobUserAgents[jobId] = userAgent
+        if (!userAgent.isNullOrBlank()) {
+            jobUserAgents[jobId] = userAgent
+            lastKnownUserAgent = userAgent
+        }
     }
 
-    fun getUserAgent(jobId: Int): String? = jobUserAgents[jobId]
+    fun getUserAgent(jobId: Int): String? = jobUserAgents[jobId] ?: lastKnownUserAgent
 
     /**
      * Called on connection thread in IppPrinterHandler.
@@ -184,7 +188,6 @@ object TransferCoordinator {
             progress = 0f,
             thumbnail = currentThumb,
         )
-        onRequestPrompt?.invoke(req)
     }
 
     fun updateProgress(jobId: Int, bytesRead: Long, totalBytes: Long) {
@@ -261,6 +264,7 @@ object TransferCoordinator {
             declinedBatchSender = null
             declinedExpiresAtMs = 0L
             jobUserAgents.clear()
+            lastKnownUserAgent = null
         }
         _uiState.value = TransferUiState.Idle
         onDismissPrompt?.invoke()

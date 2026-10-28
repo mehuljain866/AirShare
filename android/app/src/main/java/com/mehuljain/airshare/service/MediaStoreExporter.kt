@@ -29,8 +29,9 @@ class MediaStoreExporter(context: Context) : DocumentExporter {
             isVideo -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             else -> MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         }
-        var uri: Uri? = insert(collection, displayName, format, isImage, isVideo)
-            ?: insert(collection, withSuffix(displayName), format, isImage, isVideo)
+        val dateTaken = extractDateTaken(source, isImage)
+        var uri: Uri? = insert(collection, displayName, format, isImage, isVideo, dateTaken)
+            ?: insert(collection, withSuffix(displayName), format, isImage, isVideo, dateTaken)
         if (uri == null) throw IOException("MediaStore insert failed for $displayName")
         try {
             if (isImage) {
@@ -71,7 +72,7 @@ class MediaStoreExporter(context: Context) : DocumentExporter {
         }
     }
 
-    private fun insert(collection: Uri, name: String, mime: String, isImage: Boolean, isVideo: Boolean): Uri? = try {
+    private fun insert(collection: Uri, name: String, mime: String, isImage: Boolean, isVideo: Boolean, dateTaken: Long): Uri? = try {
         val relPath = when {
             isImage -> Environment.DIRECTORY_PICTURES + "/AirShare"
             isVideo -> Environment.DIRECTORY_MOVIES + "/AirShare"
@@ -83,13 +84,35 @@ class MediaStoreExporter(context: Context) : DocumentExporter {
             put(MediaStore.MediaColumns.RELATIVE_PATH, relPath)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
             if (isImage || isVideo) {
-                put(MediaStore.MediaColumns.DATE_TAKEN, System.currentTimeMillis())
+                put(MediaStore.MediaColumns.DATE_TAKEN, dateTaken)
+                put(MediaStore.MediaColumns.DATE_ADDED, dateTaken / 1000)
+                put(MediaStore.MediaColumns.DATE_MODIFIED, dateTaken / 1000)
             }
         }
         resolver.insert(collection, values)
     } catch (e: Exception) {
         Log.w("AirShare", "MediaStore insert failed for $name", e)
         null
+    }
+
+    private fun extractDateTaken(source: File, isImage: Boolean): Long {
+        if (!isImage) return System.currentTimeMillis()
+        return try {
+            val exif = androidx.exifinterface.media.ExifInterface(source.absolutePath)
+            val dtStr = exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL)
+                ?: exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME)
+            if (!dtStr.isNullOrBlank()) {
+                val sdf = java.text.SimpleDateFormat("yyyy:MM:dd HH:mm:ss", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getDefault()
+                }
+                val parsed = sdf.parse(dtStr)
+                if (parsed != null && parsed.time > 0) parsed.time else System.currentTimeMillis()
+            } else {
+                System.currentTimeMillis()
+            }
+        } catch (_: Throwable) {
+            System.currentTimeMillis()
+        }
     }
 
     private fun withSuffix(name: String): String {

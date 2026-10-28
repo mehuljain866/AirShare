@@ -337,7 +337,7 @@ class PrinterForegroundService : Service() {
             Intent(this, TransferReceiver::class.java).setAction(TransferReceiver.ACTION_DECLINE),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val fullScreenPi = PendingIntent.getActivity(
+        val openPi = PendingIntent.getActivity(
             this, 103,
             Intent(this, TransferPromptActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -350,10 +350,10 @@ class PrinterForegroundService : Service() {
             .setLargeIcon(largeIcon)
             .setContentTitle("AirShare")
             .setContentText(req.promptSubtitle)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setFullScreenIntent(fullScreenPi, true)
-            .setAutoCancel(true)
+            .setContentIntent(openPi)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .setAutoCancel(false)
             .setOngoing(true)
             .addAction(0, "Decline", declinePi)
             .addAction(0, "Accept", acceptPi)

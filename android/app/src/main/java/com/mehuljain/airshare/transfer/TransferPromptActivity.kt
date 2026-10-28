@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.transfer
+package com.mehuljain.airshare.transfer
 
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -75,7 +75,8 @@ class TransferPromptActivity : ComponentActivity() {
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        TransferCoordinator.decline()
+                        // Dismiss activity without declining transfer;
+                        // user can still accept or decline from the heads-up notification
                         finish()
                     },
                 contentAlignment = Alignment.TopCenter,

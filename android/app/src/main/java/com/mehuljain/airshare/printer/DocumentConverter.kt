@@ -12,6 +12,8 @@ data class JobMetadata(
     val userName: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val userAgent: String? = null,
+    val producer: String? = null,
+    val creator: String? = null,
 )
 
 /**
