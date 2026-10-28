@@ -115,4 +115,18 @@ class DeviceInfoParserTest {
         assertTrue(info.isPhoto)
         assertEquals("Gallery", info.destinationStorage)
     }
+
+    @Test
+    fun parseIPhoneVideo() {
+        val info = DeviceInfoParser.parse(
+            userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
+            userName = "Mehul",
+            jobName = "IMG_9210.MOV",
+            format = "video/quicktime",
+        )
+        assertEquals("Mehul's iPhone", info.deviceDisplayName)
+        assertEquals("IMG_9210.MOV", info.contentDisplayName)
+        assertTrue(info.isVideo)
+        assertEquals("Gallery", info.destinationStorage)
+    }
 }

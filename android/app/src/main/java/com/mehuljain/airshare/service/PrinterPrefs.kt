@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.service
+package com.mehuljain.airshare.service
 
 import android.content.Context
 import android.os.Build
@@ -13,6 +13,8 @@ object PrinterPrefs {
         val sp = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
         val uuid = sp.getString("uuid", null)?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
         val name = sp.getString("name", null)?.let(::sanitizeName)?.takeIf { it.isNotEmpty() } ?: defaultName()
+        val pin = sp.getString("webSharePin", null)?.takeIf { it.length == 6 && it.all { c -> c.isDigit() } }
+            ?: generatePin()
         val cfg = PrinterConfig(
             name = name,
             port = validPort(sp.getInt("port", PrinterConfig.DEFAULT_PORT)),
@@ -24,8 +26,10 @@ object PrinterPrefs {
             extractPdfPhotos = sp.getBoolean("extractPdfPhotos", true),
             autoAccept = sp.getBoolean("autoAccept", false),
             autoOffMinutes = sp.getInt("autoOffMinutes", 10),
+            webSharePin = pin,
+            webShareEnabled = sp.getBoolean("webShareEnabled", true),
         )
-        if (!sp.contains("uuid") || !sp.contains("name")) save(context, cfg)
+        if (!sp.contains("uuid") || !sp.contains("name") || !sp.contains("webSharePin")) save(context, cfg)
         return cfg
     }
 
@@ -41,8 +45,12 @@ object PrinterPrefs {
             .putBoolean("extractPdfPhotos", config.extractPdfPhotos)
             .putBoolean("autoAccept", config.autoAccept)
             .putInt("autoOffMinutes", config.autoOffMinutes)
+            .putString("webSharePin", config.webSharePin)
+            .putBoolean("webShareEnabled", config.webShareEnabled)
             .apply()
     }
+
+    fun generatePin(): String = String.format("%06d", (100000..999999).random())
 
     fun validPort(p: Int): Int = if (p in 1024..65535) p else PrinterConfig.DEFAULT_PORT
 

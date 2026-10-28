@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 import com.mehuljain.airshare.http.HttpRequest
 import com.mehuljain.airshare.ipp.IppAttribute
@@ -105,5 +105,32 @@ class IppHttpHandlerTest {
         assertEquals("ipp://localhost:8631/ipp/print/1", resp.attr(IppTag.JOB_ATTRIBUTES, "job-uri")?.stringValue)
         assertEquals("application/pdf", store.get(1)!!.format)
         assertArrayEquals(doc, store.document(1))
+    }
+
+    @Test
+    fun verifyPinValidAndInvalid() {
+        cfg = cfg.copy(webSharePin = "123456")
+        val okResp = http.handle(req("POST", "/api/verify", "application/json", """{"pin":"123456"}""".toByteArray()))
+        assertEquals(200, okResp.status)
+        assertTrue(okResp.body.toString(Charsets.UTF_8).contains("true"))
+
+        val badResp = http.handle(req("POST", "/api/verify", "application/json", """{"pin":"999999"}""".toByteArray()))
+        assertEquals(401, badResp.status)
+        assertTrue(badResp.body.toString(Charsets.UTF_8).contains("false"))
+    }
+
+    @Test
+    fun uploadRequiresPinAndStoresFile() {
+        cfg = cfg.copy(webSharePin = "123456", autoAccept = true)
+        val videoBytes = byteArrayOf(0, 0, 0, 24, 'f'.code.toByte(), 't'.code.toByte(), 'y'.code.toByte(), 'p'.code.toByte())
+
+        // Wrong pin -> 401
+        val badResp = http.handle(req("POST", "/upload?pin=999999&filename=test.mp4", "video/mp4", videoBytes))
+        assertEquals(401, badResp.status)
+
+        // Correct pin -> 200
+        val okResp = http.handle(req("POST", "/upload?pin=123456&filename=test.mp4", "video/mp4", videoBytes))
+        assertEquals(200, okResp.status)
+        assertTrue(okResp.body.toString(Charsets.UTF_8).contains("true"))
     }
 }

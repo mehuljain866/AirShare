@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.printer
+package com.mehuljain.airshare.printer
 
 /** User-editable printer/receiver settings. */
 data class PrinterConfig(
@@ -36,6 +36,14 @@ data class PrinterConfig(
      * 0 = Never (stay on until manually turned off).
      */
     val autoOffMinutes: Int = 10,
+    /**
+     * 6-digit PIN required for local web transfers and video sharing.
+     */
+    val webSharePin: String = "",
+    /**
+     * When true (default), the web share portal and video transfer API are active.
+     */
+    val webShareEnabled: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_PORT = 8631

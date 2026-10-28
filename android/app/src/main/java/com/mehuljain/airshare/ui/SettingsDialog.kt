@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.ui
+package com.mehuljain.airshare.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -51,6 +51,8 @@ fun SettingsDialog(
     var extractPdfPhotos by remember { mutableStateOf(config.extractPdfPhotos) }
     var autoAccept by remember { mutableStateOf(config.autoAccept) }
     var autoOffMinutes by remember { mutableStateOf(config.autoOffMinutes) }
+    var webSharePin by remember { mutableStateOf(config.webSharePin) }
+    var webShareEnabled by remember { mutableStateOf(config.webShareEnabled) }
 
     val context = LocalContext.current
     val version = remember {
@@ -229,10 +231,47 @@ fun SettingsDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
+                    "Web & Video Transfer",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
+                )
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Enable Web & Video Transfer", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Allows transferring 4K videos, media, and files via Safari / Web Portal or iOS Shortcut.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = webShareEnabled, onCheckedChange = { webShareEnabled = it })
+                }
+
+                if (webShareEnabled) {
+                    OutlinedTextField(
+                        value = webSharePin,
+                        onValueChange = { v -> webSharePin = v.filter { it.isDigit() }.take(6) },
+                        label = { Text("6-Digit Pairing PIN") },
+                        singleLine = true,
+                        trailingIcon = {
+                            TextButton(onClick = { webSharePin = com.mehuljain.airshare.service.PrinterPrefs.generatePin() }) {
+                                Text("New PIN")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    )
+                }
+
+                Text(
                     text = stringResource(R.string.ui_app_version, version),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         },
@@ -250,6 +289,8 @@ fun SettingsDialog(
                             extractPdfPhotos = extractPdfPhotos,
                             autoAccept = autoAccept,
                             autoOffMinutes = autoOffMinutes,
+                            webSharePin = webSharePin.ifBlank { config.webSharePin },
+                            webShareEnabled = webShareEnabled,
                         ),
                     )
                 },
