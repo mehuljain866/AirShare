@@ -6,6 +6,8 @@ import com.mehuljain.airshare.http.HttpResponse
 import com.mehuljain.airshare.http.WebPortalHtml
 import com.mehuljain.airshare.ipp.IppCodec
 import com.mehuljain.airshare.ipp.IppMessage
+import com.mehuljain.airshare.transfer.ProgressInputStream
+import com.mehuljain.airshare.transfer.TransferCoordinator
 import java.io.InputStream
 import java.util.logging.Level
 import java.util.logging.Logger
