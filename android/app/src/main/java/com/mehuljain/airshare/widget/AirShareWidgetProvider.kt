@@ -13,6 +13,7 @@ import android.widget.RemoteViews
 import com.mehuljain.airshare.R
 import com.mehuljain.airshare.service.PrinterController
 import com.mehuljain.airshare.service.ServiceState
+import com.mehuljain.airshare.ui.MainActivity
 
 class AirShareWidgetProvider : AppWidgetProvider() {
 
@@ -57,44 +58,56 @@ class AirShareWidgetProvider : AppWidgetProvider() {
             val now = SystemClock.elapsedRealtime()
 
             if (isRunning) {
-                views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_power_on)
+                views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_btn_active)
                 if (autoOffEndTime != null && autoOffEndTime > now) {
                     // Use native Chronometer for battery-friendly, second-by-second countdown in Launcher
                     views.setViewVisibility(R.id.widget_status, View.GONE)
                     views.setViewVisibility(R.id.widget_timer, View.VISIBLE)
-                    views.setTextColor(R.id.widget_timer, Color.parseColor("#0A84FF"))
-                    views.setChronometer(R.id.widget_timer, autoOffEndTime, "Ready · Auto-off %s", true)
+                    views.setTextColor(R.id.widget_timer, Color.parseColor("#9BBDFE"))
+                    views.setChronometer(R.id.widget_timer, autoOffEndTime, "Auto-off %s", true)
                     views.setChronometerCountDown(R.id.widget_timer, true)
                 } else {
                     // Timer disabled ("Never") or expired
                     views.setChronometer(R.id.widget_timer, 0, null, false)
                     views.setViewVisibility(R.id.widget_timer, View.GONE)
                     views.setViewVisibility(R.id.widget_status, View.VISIBLE)
-                    views.setTextViewText(R.id.widget_status, "Ready to receive")
-                    views.setTextColor(R.id.widget_status, Color.parseColor("#0A84FF"))
+                    views.setTextViewText(R.id.widget_status, "Ready")
+                    views.setTextColor(R.id.widget_status, Color.parseColor("#9BBDFE"))
                 }
             } else {
                 // Stopped / Off
                 views.setChronometer(R.id.widget_timer, 0, null, false)
                 views.setViewVisibility(R.id.widget_timer, View.GONE)
                 views.setViewVisibility(R.id.widget_status, View.VISIBLE)
-                views.setTextViewText(R.id.widget_status, "Off · Tap to start")
-                views.setTextColor(R.id.widget_status, Color.parseColor("#8E8E93"))
-                views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_power_off)
+                views.setTextViewText(R.id.widget_status, "Off")
+                views.setTextColor(R.id.widget_status, Color.parseColor("#8E96A4"))
+                views.setImageViewResource(R.id.widget_toggle_btn, R.drawable.widget_btn_inactive)
             }
 
+            // Toggle button clicks
             val toggleIntent = Intent(context, AirShareWidgetProvider::class.java).apply {
                 action = ACTION_TOGGLE_AIRSHARE
             }
-            val pendingIntent = PendingIntent.getBroadcast(
+            val togglePi = PendingIntent.getBroadcast(
                 context,
                 0,
                 toggleIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+            views.setOnClickPendingIntent(R.id.widget_toggle_btn, togglePi)
 
-            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-            views.setOnClickPendingIntent(R.id.widget_toggle_btn, pendingIntent)
+            // Body clicks open the app
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val openAppPi = PendingIntent.getActivity(
+                context,
+                1,
+                openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, openAppPi)
+            views.setOnClickPendingIntent(R.id.widget_text_container, openAppPi)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
