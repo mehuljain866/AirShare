@@ -44,7 +44,7 @@ class IppHttpHandler(
                     ?: HttpResponse.text(404, "Not found")
                 "/api/info" -> {
                     val cfg = config()
-                    HttpResponse.text(200, """{"name":"${esc(cfg.name)}","pinRequired":true,"version":"0.5.0"}""", "application/json; charset=utf-8", CORS_HEADERS)
+                    HttpResponse.text(200, """{"name":"${esc(cfg.name)}","pinRequired":true,"version":"0.5.1"}""", "application/json; charset=utf-8", CORS_HEADERS)
                 }
                 "/airshare.shortcut" -> handleShortcut(request)
                 else -> HttpResponse.text(404, "Not found", headers = CORS_HEADERS)
