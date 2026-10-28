@@ -331,7 +331,7 @@ function handleFilesSelected(files) {
     const item = document.createElement('div');
     item.className = 'file-item';
     const sz = formatSize(f.size);
-    item.innerHTML = `<span class="file-name">${escHtml(f.name)}</span><span class="file-size">${sz}</span>`;
+    item.innerHTML = '<span class="file-name">' + escHtml(f.name) + '</span><span class="file-size">' + sz + '</span>';
     listEl.appendChild(item);
   });
 
@@ -340,7 +340,7 @@ function handleFilesSelected(files) {
   sendBtn.classList.remove('hidden');
   sendBtn.textContent = selectedFiles.length === 1 
     ? 'Send 1 Item to AirShare' 
-    : `Send ${selectedFiles.length} Items to AirShare`;
+    : ('Send ' + selectedFiles.length + ' Items to AirShare');
 }
 
 function formatSize(bytes) {
@@ -363,12 +363,12 @@ async function startUpload() {
   let successCount = 0;
   for (let i = 0; i < selectedFiles.length; i++) {
     const file = selectedFiles[i];
-    sendBtn.textContent = `Sending ${i + 1} of ${selectedFiles.length}...`;
+    sendBtn.textContent = 'Sending ' + (i + 1) + ' of ' + selectedFiles.length + '...';
     try {
       await uploadSingleFile(file);
       successCount++;
     } catch (e) {
-      alert(`Transfer failed for ${file.name}: ${e.message}`);
+      alert('Transfer failed for ' + file.name + ': ' + e.message);
       break;
     }
   }
@@ -405,7 +405,7 @@ function uploadSingleFile(file) {
         const elapsed = (Date.now() - startTime) / 1000;
         const speed = elapsed > 0 ? (e.loaded / elapsed) : 0;
         document.getElementById('progressSize').textContent = 
-          `${formatSize(e.loaded)} / ${formatSize(e.total)} (${formatSize(speed)}/s)`;
+          formatSize(e.loaded) + ' / ' + formatSize(e.total) + ' (' + formatSize(speed) + '/s)';
       }
     };
 
@@ -413,7 +413,7 @@ function uploadSingleFile(file) {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(xhr.responseText);
       } else {
-        reject(new Error(`Server responded with ${xhr.status}`));
+        reject(new Error('Server responded with ' + xhr.status));
       }
     };
     xhr.onerror = () => reject(new Error('Network error'));

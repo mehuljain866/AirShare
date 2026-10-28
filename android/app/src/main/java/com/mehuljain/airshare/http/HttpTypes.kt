@@ -1,4 +1,4 @@
-﻿package com.mehuljain.airshare.http
+package com.mehuljain.airshare.http
 
 import java.io.InputStream
 
@@ -27,8 +27,12 @@ class HttpResponse(
     val headers: Map<String, String> = emptyMap(),
 ) {
     companion object {
-        fun text(status: Int, text: String, contentType: String = "text/plain; charset=utf-8") =
-            HttpResponse(status, text.toByteArray(Charsets.UTF_8), contentType)
+        fun text(
+            status: Int,
+            text: String,
+            contentType: String = "text/plain; charset=utf-8",
+            headers: Map<String, String> = emptyMap(),
+        ) = HttpResponse(status, text.toByteArray(Charsets.UTF_8), contentType, headers)
     }
 }
 
