@@ -117,6 +117,16 @@ class IppHttpHandlerTest {
         val badResp = http.handle(req("POST", "/api/verify", "application/json", """{"pin":"999999"}""".toByteArray()))
         assertEquals(401, badResp.status)
         assertTrue(badResp.body.toString(Charsets.UTF_8).contains("false"))
+
+        // Web transfer disabled -> 401
+        cfg = cfg.copy(webShareEnabled = false, webSharePin = "123456")
+        val disabledResp = http.handle(req("POST", "/api/verify", "application/json", """{"pin":"123456"}""".toByteArray()))
+        assertEquals(401, disabledResp.status)
+
+        // Empty PIN -> 401
+        cfg = cfg.copy(webShareEnabled = true, webSharePin = "")
+        val emptyPinResp = http.handle(req("POST", "/api/verify", "application/json", """{"pin":""}""".toByteArray()))
+        assertEquals(401, emptyPinResp.status)
     }
 
     @Test
@@ -128,6 +138,12 @@ class IppHttpHandlerTest {
         val badResp = http.handle(req("POST", "/upload?pin=999999&filename=test.mp4", "video/mp4", videoBytes))
         assertEquals(401, badResp.status)
 
+        // Empty pin configured -> 401
+        cfg = cfg.copy(webSharePin = "", autoAccept = true)
+        val emptyPinResp = http.handle(req("POST", "/upload?pin=&filename=test.mp4", "video/mp4", videoBytes))
+        assertEquals(401, emptyPinResp.status)
+
+        cfg = cfg.copy(webSharePin = "123456", autoAccept = true)
         // Correct pin -> 200
         val okResp = http.handle(req("POST", "/upload?pin=123456&filename=test.mp4", "video/mp4", videoBytes))
         assertEquals(200, okResp.status)

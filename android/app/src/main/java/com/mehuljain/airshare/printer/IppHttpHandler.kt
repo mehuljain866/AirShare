@@ -76,7 +76,8 @@ class IppHttpHandler(
             ?: request.headers["x-airshare-pin"]
             ?: parseQueryParams(request.path)["pin"]
             ?: ""
-        val valid = config().webSharePin.isEmpty() || enteredPin == config().webSharePin
+        val cfg = config()
+        val valid = cfg.webShareEnabled && cfg.webSharePin.isNotEmpty() && enteredPin == cfg.webSharePin
         val status = if (valid) 200 else 401
         return HttpResponse.text(status, """{"valid":$valid}""", "application/json; charset=utf-8", CORS_HEADERS)
     }
@@ -88,7 +89,7 @@ class IppHttpHandler(
         }
         val queryParams = parseQueryParams(request.path)
         val pin = request.headers["x-airshare-pin"] ?: queryParams["pin"] ?: ""
-        if (cfg.webSharePin.isNotEmpty() && pin != cfg.webSharePin) {
+        if (cfg.webSharePin.isEmpty() || pin != cfg.webSharePin) {
             return HttpResponse.text(401, """{"error":"Invalid PIN"}""", "application/json; charset=utf-8", CORS_HEADERS)
         }
 

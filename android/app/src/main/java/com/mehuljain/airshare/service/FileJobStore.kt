@@ -226,6 +226,15 @@ class FileJobStore(
         "image/urf" -> "urf"
         "image/jpeg" -> "jpg"
         "image/png" -> "png"
+        "image/heic" -> "heic"
+        "image/heif" -> "heif"
+        "image/webp" -> "webp"
+        "video/mp4" -> "mp4"
+        "video/quicktime" -> "mov"
+        "video/x-m4v" -> "m4v"
+        "video/x-matroska" -> "mkv"
+        "video/webm" -> "webm"
+        "video/x-msvideo" -> "avi"
         else -> "bin"
     }
 }

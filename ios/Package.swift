@@ -1,4 +1,4 @@
-﻿// swift-tools-version:5.9
+// swift-tools-version:5.9
 // (language mode 5 is the default for tools-version 5.9)
 import PackageDescription
 

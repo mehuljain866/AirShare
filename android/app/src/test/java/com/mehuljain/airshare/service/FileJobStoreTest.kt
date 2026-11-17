@@ -45,6 +45,21 @@ class FileJobStoreTest {
         assertEquals(3, b.create("c", "u", "image/png").id)
     }
 
+    @Test fun formatsUseCorrectExtensions() {
+        val s = FileJobStore(dir)
+        val heic = s.create("photo", "u", "image/heic")
+        val doneHeic = s.writeDocument(heic.id, "image/heic", ByteArrayInputStream(byteArrayOf(1)))
+        assertEquals("heic", doneHeic.file!!.extension)
+
+        val mp4 = s.create("video", "u", "video/mp4")
+        val doneMp4 = s.writeDocument(mp4.id, "video/mp4", ByteArrayInputStream(byteArrayOf(2)))
+        assertEquals("mp4", doneMp4.file!!.extension)
+
+        val mov = s.create("clip", "u", "video/quicktime")
+        val doneMov = s.writeDocument(mov.id, "video/quicktime", ByteArrayInputStream(byteArrayOf(3)))
+        assertEquals("mov", doneMov.file!!.extension)
+    }
+
     @Test fun reopenKeepsDocument() {
         val a = FileJobStore(dir)
         val j = a.create("a", "u", "image/jpeg")

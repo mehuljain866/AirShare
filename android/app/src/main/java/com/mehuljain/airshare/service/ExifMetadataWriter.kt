@@ -33,13 +33,15 @@ object ExifMetadataWriter {
             }
             val dateStr = dateFmt.format(date)
 
-            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME) == null) {
+            // A print/transfer timestamp is not the photograph's capture timestamp.
+            // Preserve source EXIF dates; only fill fields that are absent.
+            if (exif.getAttribute(ExifInterface.TAG_DATETIME).isNullOrBlank()) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME, dateStr)
             }
-            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL) == null) {
+            if (exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL).isNullOrBlank()) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, dateStr)
             }
-            if (metadata.createdAt > 0 || exif.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED) == null) {
+            if (exif.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED).isNullOrBlank()) {
                 exif.setAttribute(ExifInterface.TAG_DATETIME_DIGITIZED, dateStr)
             }
 
